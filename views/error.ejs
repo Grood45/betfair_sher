@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error</title>
+    <style>
+        .error-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ff4444;
+            border-radius: 5px;
+            background-color: #ffebee;
+        }
+        h1 {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>An Error Occurred</h1>
+        <p><%= message %></p>
+        <% if (error) { %>
+            <pre><%= JSON.stringify(error, null, 2) %></pre>
+        <% } %>
+        <a href="/">Return to Home</a>
+    </div>
+</body>
+</html>
