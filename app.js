@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
 });
 
 app.use("/", routes.authRoute);
+app.use("/", routes.dashboardRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {
