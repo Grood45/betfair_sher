@@ -1,12 +1,17 @@
+// models/User.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    mobile: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
-  });
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  name: { type: String, default: null },
+  mobile: { type: String, default: null },
+  role: {
+    type: String,
+    enum: ['superadmin', 'user', 'partner'],
+    default: 'user'
+  },
+  status: { type: Number, default: 1 }
+}, { timestamps: true });
 
-const User = mongoose.model('User', userSchema);
-
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);

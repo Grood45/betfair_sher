@@ -4,11 +4,11 @@ const authController = require('../controllers/userAuthController');
 
 // Register routes
 router.get('/register', authController.registerPage);
-router.post('/register', authController.registerUser);
+router.post('/api/signup', authController.signUp);
 
 // Login routes
 router.get('/login', authController.loginPage);
-router.post('/login', authController.loginUser);
+router.post('/api/signin', authController.loginUser);
 
 router.get('/logout', authController.logout);
 

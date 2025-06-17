@@ -14,64 +14,105 @@ exports.registerPage = (req, res) => {
   res.render('auth/register');
 };
 
-// Register User
-exports.registerUser = async (req, res) => {
-  const { name, mobile, password } = req.body;
+// Register / Signup API
+exports.signUp = async (req, res) => {
+  const { username, password, name, mobile, role } = req.body;
+
   try {
-    const existingUser = await User.findOne({ mobile });
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.render('register', { error: 'Mobile already registered!' });
+      return res.status(400).json({ error: 'Username already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, mobile, password: hashedPassword });
-    await newUser.save();
-    
-    res.redirect('/login');
+    const user = new User({
+      username,
+      password: hashedPassword,
+      name: name || null,
+      mobile: mobile || null,
+      role: role || 'user',
+      status: 1
+    });
+
+    await user.save();
+
+    const accessToken = generateAccessToken({ id: user._id });
+    const refreshToken = generateRefreshToken({ id: user._id });
+
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+    res.status(201).json({
+      message: 'Signup successful',
+      username: user.username,
+      role: user.role,
+      accessToken,
+      refreshToken
+    });
   } catch (error) {
     console.error(error);
-    res.render('register', { error: 'Something went wrong. Try again!' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 
 // Render Login Page
 exports.loginPage = (req, res) => {
   res.render('auth/login');
 };
 
-// Login User
+// controllers/userAuthController.js
+
 exports.loginUser = async (req, res) => {
-  const { mobile, password } = req.body;
+  const { login, password } = req.body; // `login` can be username OR mobile
+
   try {
-    const user = await User.findOne({ mobile });
+    // Try to find user by username or mobile
+    const user = await User.findOne({
+      $or: [
+        { username: login },
+        { mobile: login }
+      ]
+    });
+
     if (!user) {
-      return res.render('auth/login', { error: 'Invalid mobile' });
+      return res.status(400).json({ error: 'User not found' });
     }
 
+    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.render('auth/login', { error: 'Invalid password!' });
+      return res.status(400).json({ error: 'Invalid password' });
     }
-    
-    const accessToken = generateAccessToken({ id: user._id, mobile: mobile });   
-    const refreshToken = generateRefreshToken({ id: user._id, mobile: mobile });
-   
+
+    // Generate tokens
+    const accessToken = generateAccessToken({ id: user._id });
+    const refreshToken = generateRefreshToken({ id: user._id });
+
     res.cookie("accessToken", accessToken, {
-        ...cookieOptions,
-        maxAge: parseInt(process.env.ACCESS_TOKEN_EXPIRES) * 60 * 1000 || 15 * 60 * 1000 // 15 mins
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000
     });
 
     res.cookie("refreshToken", refreshToken, {
-        ...cookieOptions,
-        maxAge: parseInt(process.env.REFRESH_TOKEN_EXPIRES) * 24 * 60 * 60 * 1000 || 7 * 24 * 60 * 60 * 1000 // 7 days
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
-    res.redirect('/dashboard');
-    //res.render('dashboard', { user, accessToken });
+
+    res.status(200).json({
+      message: "Login successful",
+      username: user.username,
+      role: user.role,
+      accessToken,
+      refreshToken
+    });
   } catch (error) {
     console.error(error);
-    res.render('auth/login', { error: 'Something went wrong. Try again!' });
+    res.status(500).json({ error: "Server error" });
   }
 };
+
+
 
 
 // Refresh Access Token
