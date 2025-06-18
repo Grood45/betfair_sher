@@ -8,10 +8,11 @@ const userSchema = new mongoose.Schema({
   mobile: { type: String, default: null },
   role: {
     type: String,
-    enum: ['superadmin', 'user', 'partner'],
+    enum: ['superadmin', 'user', 'partner','staff'],
     default: 'user'
   },
-  status: { type: Number, default: 1 }
+  status: { type: Number, default: 1 },
+  createdBy: { type: String, default: 'superadmin' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

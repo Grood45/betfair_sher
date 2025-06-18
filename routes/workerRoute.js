@@ -1,0 +1,14 @@
+const express = require('express');
+const router = express.Router();
+const workerController = require('../controllers/workerController');
+
+// Register routes
+router.post('/create/worker', workerController.create);
+router.put('/update/worker/:id', workerController.updateWorker);
+router.get('/worker/:id', workerController.getWorkerById);
+router.get('/worker/list', workerController.getAllWorkers);
+
+router.delete('/delete/worker/:id', workerController.delete);
+
+
+module.exports = router;

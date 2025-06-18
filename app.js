@@ -4,9 +4,12 @@ const express = require('express');
 const app = express();
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const cors = require('cors'); // add this at the top
+
 const bodyParser = require('body-parser');
 const port = process.env.PORT || 3000;
 const routes = require('./routes/routeWrapper');
+app.use(cors()); // allow all origins by default
 
 const connectDB = require('./config/db/mongoDB');
 
@@ -31,6 +34,7 @@ app.get('/', (req, res) => {
 
 app.use("/", routes.authRoute);
 app.use("/", routes.dashboardRoute);
+app.use("/api", routes.workerRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {

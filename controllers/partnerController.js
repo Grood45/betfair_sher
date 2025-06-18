@@ -9,10 +9,7 @@ const cookieOptions = {
     sameSite: 'Strict',    // Or 'Lax' if cross-origin
   };
 
-// Render Register Page
-exports.registerPage = (req, res) => {
-  res.render('auth/register');
-};
+
 
 // Register / Signup API
 exports.signUp = async (req, res) => {
@@ -39,6 +36,9 @@ exports.signUp = async (req, res) => {
     const accessToken = generateAccessToken({ id: user._id });
     const refreshToken = generateRefreshToken({ id: user._id });
 
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+
     res.status(201).json({
       message: 'Signup successful',
       username: user.username,
@@ -53,12 +53,6 @@ exports.signUp = async (req, res) => {
 };
 
 
-// Render Login Page
-exports.loginPage = (req, res) => {
-  res.render('auth/login');
-};
-
-// controllers/userAuthController.js
 
 exports.loginUser = async (req, res) => {
   const { login, password } = req.body; // `login` can be username OR mobile
@@ -86,6 +80,15 @@ exports.loginUser = async (req, res) => {
     const accessToken = generateAccessToken({ id: user._id });
     const refreshToken = generateRefreshToken({ id: user._id });
 
+    res.cookie("accessToken", accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
 
     res.status(200).json({
       message: "Login successful",
@@ -103,31 +106,3 @@ exports.loginUser = async (req, res) => {
 
 
 
-// Refresh Access Token
-exports.refreshToken = (req, res) => {
-    const token = req.cookies.refreshToken;
-    if (!token) {
-      return res.status(401).json({ message: 'No refresh token, please login' });
-    }
-  
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-      const accessToken = generateAccessToken({ id: decoded.id, mobile: decoded.mobile });
-      res.cookie("accessToken", accessToken, {
-        ...cookieOptions,
-        maxAge: parseInt(process.env.ACCESS_TOKEN_EXPIRES) * 60 * 1000 || 15 * 60 * 1000 // 15 mins
-      });
-      res.json({ accessToken });
-    } catch (error) {
-      console.error(error);
-      return res.status(403).json({ message: 'Invalid refresh token' });
-    }
-  };
-  
-  // Logout
-  exports.logout = (req, res) => {
-    res.clearCookie('refreshToken');
-    res.clearCookie('accessToken');
-    res.status(200).json({ message: 'Logged out successfully' });
-    
-  };

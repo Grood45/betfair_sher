@@ -10,6 +10,6 @@ router.post('/api/signup', authController.signUp);
 router.get('/login', authController.loginPage);
 router.post('/api/signin', authController.loginUser);
 
-router.get('/logout', authController.logout);
+router.get('/api/logout', authController.logout);
 
 module.exports = router;
