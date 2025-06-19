@@ -4,11 +4,13 @@ const partnerController = require('../controllers/partnerController');
 
 // Register routes
 router.post('/create', partnerController.create);
-// router.put('/update/worker/:id', workerController.updateWorker);
-// router.get('/worker/:id', workerController.getWorkerById);
-// router.get('/worker/list', workerController.getAllWorkers);
+router.get('/:id', partnerController.getPartnerById);
+router.get('', partnerController.getAllPartners);
+router.put('/:id', partnerController.updatePartner);
+router.delete('/:id', partnerController.deletePartner);
+router.patch('/:id/status', partnerController.setPartnerStatus);
+router.patch('/:id/password', partnerController.changePassword);
 
-// router.delete('/delete/worker/:id', workerController.delete);
 
 
 module.exports = router;

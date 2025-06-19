@@ -12,7 +12,7 @@ const cookieOptions = {
 
 
   exports.create = async (req, res) => {
-    const { username, password, confirmPassword } = req.body;
+    const { username, password, confirmPassword,creatorId } = req.body;
   
     try {
       if (!username || !password || !confirmPassword) {
@@ -34,6 +34,7 @@ const cookieOptions = {
         username,
         password: hashedPassword,
         role: 'staff', // fixed role
+        creatorId:creatorId,
         status: 1
       });
   
@@ -113,7 +114,13 @@ const cookieOptions = {
 
   exports.getAllWorkers = async (req, res) => {
     try {
-      const workers = await User.find({ role: 'staff' }).select('-password');
+      const { creatorId } = req.params;
+  
+      if (!creatorId) {
+        return res.status(400).json({ error: 'creatorId is required' });
+      }
+  
+      const workers = await User.find({ role: 'staff', creatorId }).select('-password');
   
       res.status(200).json({
         message: 'Workers fetched successfully',
@@ -124,6 +131,7 @@ const cookieOptions = {
       res.status(500).json({ error: 'Internal Server Error' });
     }
   };
+  
   
   
   exports.delete = async (req, res) => {

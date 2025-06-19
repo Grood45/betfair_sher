@@ -6,7 +6,7 @@ const workerController = require('../controllers/workerController');
 router.post('/create/worker', workerController.create);
 router.put('/update/worker/:id', workerController.updateWorker);
 router.get('/worker/:id', workerController.getWorkerById);
-router.get('/worker/list', workerController.getAllWorkers);
+router.get('/worker/all/:creatorId', workerController.getAllWorkers);
 
 router.delete('/delete/worker/:id', workerController.delete);
 

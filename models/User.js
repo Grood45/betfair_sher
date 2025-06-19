@@ -12,7 +12,11 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
   status: { type: Number, default: 1 },
-  createdBy: { type: String, default: 'superadmin' }
+  createdBy: { type: String, default: 'superadmin' },
+    creatorId: {
+      type: String,
+      required: true
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

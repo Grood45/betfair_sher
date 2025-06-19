@@ -12,7 +12,15 @@ const partnerSchema = new mongoose.Schema({
   status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
   callbackUrls: [{ type: String }],
   endpoints: [{ type: String }],
-  notes: { type: String }
+  notes: { type: String },
+  password: {
+    type: String
+  },
+  creatorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Or 'superadmin'
+    required: true
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Partner', partnerSchema);
