@@ -26,9 +26,20 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const allowedOrigins = [
+  'https://sportmaindashboard.netlify.app',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: 'https://sportmaindashboard.netlify.app', // or use '*' for all (not safe for prod)
-  credentials: true // if using cookies/auth headers
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
 }));
 
 app.get('/', (req, res) => {
@@ -38,6 +49,7 @@ app.get('/', (req, res) => {
 app.use("/", routes.authRoute);
 app.use("/", routes.dashboardRoute);
 app.use("/api", routes.workerRoute);
+app.use("/api/partner", routes.partnerRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {
