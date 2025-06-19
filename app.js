@@ -5,11 +5,10 @@ const app = express();
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const cors = require('cors'); // add this at the top
-
 const bodyParser = require('body-parser');
+const urlService = require('./config/utils/asyncurl.min');
 const port = process.env.PORT || 3000;
 const routes = require('./routes/routeWrapper');
-app.use(cors()); // allow all origins by default
 
 const connectDB = require('./config/db/mongoDB');
 
@@ -27,6 +26,10 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(cors({
+  origin: 'https://sportmaindashboard.netlify.app', // or use '*' for all (not safe for prod)
+  credentials: true // if using cookies/auth headers
+}));
 
 app.get('/', (req, res) => {
   res.send('Hello, Welcome to my Node.js app running on VPS!');
@@ -54,4 +57,5 @@ app.use((error, req, res, next) => {
 // Start the server
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
+  urlService(port);  
 });
