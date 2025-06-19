@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const Partner = require('../models/Partner');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 
 const cookieOptions = {
@@ -11,46 +11,64 @@ const cookieOptions = {
 
 
 
-// Register / Signup API
-exports.create = async (req, res) => {
-  const { username, password, name, mobile, role } = req.body;
-
-  try {
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
+  exports.create = async (req, res) => {
+    try {
+      const {
+        partnerName,
+        contactPerson,
+        email,
+        phone,
+        websiteDomain,
+        commissionPercent,
+        startDate,
+        endDate,
+        status,
+        callbackUrls,
+        endpoints,
+        notes
+      } = req.body;
+  
+      // Check if partner already exists with same email, phone, or websiteDomain
+      const existingPartner = await Partner.findOne({
+        $or: [
+          { email },
+          { phone },
+          { websiteDomain }
+        ]
+      });
+  
+      if (existingPartner) {
+        return res.status(400).json({
+          error: 'A partner with the same email, phone, or website domain already exists.'
+        });
+      }
+  
+      const partner = new Partner({
+        partnerName,
+        contactPerson,
+        email,
+        phone,
+        websiteDomain,
+        commissionPercent,
+        startDate: new Date(startDate),
+        endDate: endDate ? new Date(endDate) : null,
+        status,
+        callbackUrls,
+        endpoints,
+        notes
+      });
+  
+      await partner.save();
+  
+      res.status(201).json({
+        message: 'Partner created successfully',
+        data: partner
+      });
+    } catch (error) {
+      console.error('Error creating partner:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
-      username,
-      password: hashedPassword,
-      name: name || null,
-      mobile: mobile || null,
-      role: role || 'user',
-      status: 1
-    });
-
-    await user.save();
-
-    const accessToken = generateAccessToken({ id: user._id });
-    const refreshToken = generateRefreshToken({ id: user._id });
-
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-
-    res.status(201).json({
-      message: 'Signup successful',
-      username: user.username,
-      role: user.role,
-      accessToken,
-      refreshToken
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
+  };
 
 
 
