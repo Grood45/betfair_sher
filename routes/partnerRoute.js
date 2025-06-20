@@ -12,5 +12,4 @@ router.patch('/:id/status', partnerController.setPartnerStatus);
 router.patch('/:id/password', partnerController.changePassword);
 
 
-
 module.exports = router;

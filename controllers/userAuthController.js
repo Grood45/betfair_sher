@@ -2,13 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
-
-const cookieOptions = {
-    httpOnly: true,
-    secure: true,          // Set to true in production (HTTPS)
-    sameSite: 'Strict',    // Or 'Lax' if cross-origin
-  };
-
+const LoginHistory = require('../models/loginHistory');
 // Render Register Page
 exports.registerPage = (req, res) => {
   res.render('auth/register');
@@ -86,6 +80,15 @@ exports.loginUser = async (req, res) => {
     const accessToken = generateAccessToken({ id: user._id });
     const refreshToken = generateRefreshToken({ id: user._id });
 
+    // Save login history (first login)
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const browser = req.headers['user-agent'];
+
+   const history = await LoginHistory.create({
+      userId: user._id,
+      ipAddress,
+      browser
+    });
 
     res.status(200).json({
       message: "Login successful",
@@ -93,7 +96,7 @@ exports.loginUser = async (req, res) => {
       _id: user._id,
       role: user.role,
       accessToken,
-      refreshToken
+      refreshToken,
     });
   } catch (error) {
     console.error(error);
@@ -126,9 +129,37 @@ exports.refreshToken = (req, res) => {
   };
   
   // Logout
-  exports.logout = (req, res) => {
-    res.clearCookie('refreshToken');
-    res.clearCookie('accessToken');
+  exports.logout = async (req, res) => {
+    const userId = req.userId;
+    
+    const latestLogin = await LoginHistory.findOne({ userId: userId }).sort({ loginDate: -1 });
+
+    if (latestLogin) {
+      latestLogin.logoutDate = new Date();
+      await latestLogin.save();
+    }
+
     res.status(200).json({ message: 'Logged out successfully' });
     
+  };
+
+  exports.getLoginHistory = async (req, res) => {
+    try {
+      const userId = req.userId;
+
+  
+      if (!userId) {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+  
+      const history = await LoginHistory.find({ userId }).sort({ loginDate: -1 });
+  
+      res.status(200).json({
+        message: 'Login history fetched successfully',
+        data: history
+      });
+    } catch (error) {
+      console.error('Error fetching login history:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   };

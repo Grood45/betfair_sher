@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/userAuthController');
-
+const verifyToken = require('../middleware/verifyToken');
 // Register routes
 router.get('/register', authController.registerPage);
 router.post('/api/signup', authController.signUp);
@@ -10,6 +10,8 @@ router.post('/api/signup', authController.signUp);
 router.get('/login', authController.loginPage);
 router.post('/api/signin', authController.loginUser);
 
-router.get('/api/logout', authController.logout);
+router.get('/api/logout',verifyToken, authController.logout);
+router.get('/api/login/history',verifyToken, authController.getLoginHistory);
+
 
 module.exports = router;
