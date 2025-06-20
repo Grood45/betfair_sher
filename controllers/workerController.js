@@ -132,7 +132,35 @@ const cookieOptions = {
     }
   };
   
+  exports.changePassword = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { password, confirmPassword } = req.body;
   
+      if (!password || !confirmPassword) {
+        return res.status(400).json({ error: 'Password and confirm password are required' });
+      }
+  
+      if (password !== confirmPassword) {
+        return res.status(400).json({ error: 'Passwords do not match' });
+      }
+  
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ error: 'Partner not found' });
+      }
+  
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+  
+      await user.save();
+  
+      res.status(200).json({ message: 'Password updated successfully' });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  };
   
   exports.delete = async (req, res) => {
     const { id } = req.params;

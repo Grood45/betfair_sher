@@ -7,6 +7,7 @@ router.post('/create/worker', workerController.create);
 router.put('/update/worker/:id', workerController.updateWorker);
 router.get('/worker/:id', workerController.getWorkerById);
 router.get('/worker/all/:creatorId', workerController.getAllWorkers);
+router.patch('/worker/:id/password', workerController.changePassword);
 
 router.delete('/delete/worker/:id', workerController.delete);
 
