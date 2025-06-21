@@ -50,6 +50,7 @@ app.use("/", routes.authRoute);
 app.use("/", routes.dashboardRoute);
 app.use("/api", routes.workerRoute);
 app.use("/api/partner", routes.partnerRoute);
+app.use("/api/score", routes.scoreApiRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {

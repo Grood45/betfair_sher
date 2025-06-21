@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Partner = require('../models/Partner');
+const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 
 const cookieOptions = {
@@ -13,6 +14,7 @@ const cookieOptions = {
 
   exports.create = async (req, res) => {
     try {
+
       const {
         partnerName,
         contactPerson,
@@ -26,8 +28,12 @@ const cookieOptions = {
         callbackUrls,
         endpoints,
         notes,
+        password,
         creatorId
       } = req.body;
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
   
       // Check if partner already exists with same email, phone, or websiteDomain
       const existingPartner = await Partner.findOne({
@@ -61,6 +67,17 @@ const cookieOptions = {
       });
   
       await partner.save();
+
+          // Create user with hashed password
+    const user = new User({
+      username: email,       // ✅ Store email in username
+      mobile: phone,         // ✅ Store phone in mobile field
+      password: hashedPassword, // ✅ Store hashed password
+      role: 'partner',
+      creatorId
+    });
+
+    await user.save();
   
       res.status(201).json({
         message: 'Partner created successfully',
