@@ -85,7 +85,7 @@ const cookieOptions = {
       });
     } catch (error) {
       console.error('Error creating partner:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
 
