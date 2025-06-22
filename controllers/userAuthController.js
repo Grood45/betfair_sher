@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Role = require('../models/Role');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const LoginHistory = require('../models/loginHistory');
 // Render Register Page
@@ -76,9 +77,15 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ error: 'Invalid password' });
     }
 
+
+    const payload = {
+      id: user._id,
+      role: user.role,
+      username: user.username
+    };
     // Generate tokens
-    const accessToken = generateAccessToken({ id: user._id });
-    const refreshToken = generateRefreshToken({ id: user._id });
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
 
     // Save login history (first login)
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -107,30 +114,36 @@ exports.loginUser = async (req, res) => {
 
 
 
-// Refresh Access Token
+// Refresh Access Token using refresh token sent in the body
 exports.refreshToken = (req, res) => {
-    const token = req.cookies.refreshToken;
-    if (!token) {
-      return res.status(401).json({ message: 'No refresh token, please login' });
-    }
-  
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-      const accessToken = generateAccessToken({ id: decoded.id, mobile: decoded.mobile });
-      res.cookie("accessToken", accessToken, {
-        ...cookieOptions,
-        maxAge: parseInt(process.env.ACCESS_TOKEN_EXPIRES) * 60 * 1000 || 15 * 60 * 1000 // 15 mins
-      });
-      res.json({ accessToken });
-    } catch (error) {
-      console.error(error);
-      return res.status(403).json({ message: 'Invalid refresh token' });
-    }
-  };
+  const { refreshToken } = req.body; // Use body, not cookie
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'No refresh token provided' });
+  }
+
+  try {
+    // Verify the refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Generate new access token
+    const accessToken = generateAccessToken({
+      id: decoded.id,
+    });
+
+    // Return new access token in response
+    res.status(200).json({ accessToken });
+
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    return res.status(403).json({ message: 'Invalid or expired refresh token' });
+  }
+};
+
   
   // Logout
   exports.logout = async (req, res) => {
-    const userId = req.userId;
+    const userId = req.user.id;
     
     const latestLogin = await LoginHistory.findOne({ userId: userId }).sort({ loginDate: -1 });
 
@@ -163,3 +176,52 @@ exports.refreshToken = (req, res) => {
       res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
+
+// Controller to create a new role with menu permissions
+exports.createRole = async (req, res) => {
+  try {
+    const { staffId, roleName, menus } = req.body;
+
+    // Validate input
+    if (!staffId || !roleName || !Array.isArray(menus)) {
+      return res.status(400).json({ message: 'staffId, roleName, and menus[] are required' });
+    }
+
+    // Ensure only superadmin can assign roles
+    if (!req.user || req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Only superadmin can assign roles' });
+    }
+
+    // Find staff user
+    const user = await User.findById(staffId);
+    if (!user) {
+      return res.status(404).json({ message: 'Staff user not found' });
+    }
+
+    // Assign new role and custom menu permissions
+    user.role = roleName;
+    user.customMenus = menus;
+    if (!user.creatorId) {
+      user.creatorId = req.user.id;
+    }
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Role and menus assigned to staff',
+      user: {
+        _id: user._id,
+        name: user.name,
+        role: user.role,
+        customMenus: user.customMenus
+      }
+    });
+
+  } catch (err) {
+    console.error('Assign role error:', err);
+    return res.status(500).json({
+      message: 'Internal server error',
+      error: err.message
+    });
+  }
+};
+

@@ -14,9 +14,9 @@ const userSchema = new mongoose.Schema({
   status: { type: Number, default: 1 },
   createdBy: { type: String, default: 'superadmin' },
     creatorId: {
-      type: String,
-      required: true
+      type: String
     },
+    customMenus: [String]
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
