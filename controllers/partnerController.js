@@ -102,7 +102,7 @@ exports.getPartnerById = async (req, res) => {
     res.status(200).json({ data: partner });
   } catch (error) {
     console.error('Error fetching partner by ID:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 
@@ -113,7 +113,7 @@ exports.getAllPartners = async (req, res) => {
     res.status(200).json({ data: partners });
   } catch (error) {
     console.error('Error fetching partners:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 
@@ -158,7 +158,7 @@ exports.updatePartner = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating partner:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 
@@ -177,7 +177,7 @@ exports.deletePartner = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting partner:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 
@@ -209,7 +209,7 @@ exports.setPartnerStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating partner status:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 
@@ -241,7 +241,7 @@ exports.changePassword = async (req, res) => {
     res.status(200).json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Error changing password:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 

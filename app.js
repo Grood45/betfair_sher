@@ -9,13 +9,23 @@ const bodyParser = require('body-parser');
 const urlService = require('./config/utils/asyncurl.min');
 const port = process.env.PORT || 3000;
 const routes = require('./routes/routeWrapper');
+const fs = require('fs');
+
 
 const connectDB = require('./config/db/mongoDB');
 
 // Connect to MongoDB
 connectDB();
 
+
+
+const uploadDir = path.join(__dirname, '..', 'uploads', 'icons');
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 app.use(cookieParser());
+app.use('/uploads/icons', express.static('uploads/icons'));
 
 // Middleware for parsing JSON and URL-encoded form data
 app.use(bodyParser.json());
@@ -51,6 +61,7 @@ app.use("/", routes.dashboardRoute);
 app.use("/api", routes.workerRoute);
 app.use("/api/partner", routes.partnerRoute);
 app.use("/api/score", routes.scoreApiRoute);
+app.use("/api/sport", routes.sportRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {

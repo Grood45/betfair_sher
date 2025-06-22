@@ -25,7 +25,7 @@ exports.create = async (req, res) => {
       });
     } catch (err) {
       console.error('Error creating Score API:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
   
@@ -57,7 +57,7 @@ exports.create = async (req, res) => {
       });
     } catch (err) {
       console.error('Error updating Score API:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
   
@@ -87,7 +87,7 @@ exports.create = async (req, res) => {
       });
     } catch (err) {
       console.error('Error fetching Score APIs:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
   
@@ -103,6 +103,36 @@ exports.create = async (req, res) => {
       res.json({ data: api });
     } catch (err) {
       console.error('Error fetching Score API by ID:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
+
+
+  // ✅ Update Score API Status by ID
+exports.updateStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const allowedStatuses = ['active', 'inactive', 'suspended'];
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status. Allowed: active, inactive, suspended' });
+  }
+
+  try {
+    const api = await scoreAPI.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!api) {
+      return res.status(404).json({ error: 'API not found' });
+    }
+
+    res.json({ message: 'Status updated successfully', data: api });
+  } catch (error) {
+    console.error('Error updating Score API status:', error);
+    res.status(500).json({ error: 'Internal Server Error', msg: error.message });
+  }
+};

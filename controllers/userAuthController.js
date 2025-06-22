@@ -42,7 +42,7 @@ exports.signUp = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
 };
 
@@ -160,6 +160,6 @@ exports.refreshToken = (req, res) => {
       });
     } catch (error) {
       console.error('Error fetching login history:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };

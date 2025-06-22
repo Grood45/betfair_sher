@@ -46,7 +46,7 @@ const cookieOptions = {
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
 
@@ -88,7 +88,7 @@ const cookieOptions = {
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
 
@@ -108,7 +108,7 @@ const cookieOptions = {
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
 
@@ -128,7 +128,7 @@ const cookieOptions = {
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
   
@@ -158,7 +158,7 @@ const cookieOptions = {
       res.status(200).json({ message: 'Password updated successfully' });
     } catch (error) {
       console.error('Error changing password:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
   
@@ -177,7 +177,7 @@ const cookieOptions = {
       res.status(200).json({ message: 'Worker deleted successfully' });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      res.status(500).json({ error: 'Internal Server Error','msg':error.message });
     }
   };
   
