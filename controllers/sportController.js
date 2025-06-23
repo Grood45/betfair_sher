@@ -5,6 +5,95 @@ const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+
+
+// GET /api/sports
+exports.getAll = async (req, res) => {
+  try {
+    const sports = await Sport.aggregate([
+      {
+        $addFields: {
+          sortPriority: {
+            $cond: { if: { $eq: ['$position', 1] }, then: 0, else: 1 }
+          }
+        }
+      },
+      {
+        $sort: { sortPriority: 1, position: 1, _id: -1 } // 👈 Custom priority, then position, then newest
+      },
+      {
+        $project: { sortPriority: 0 } // 👈 Remove sort helper from result
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Sports fetched and sorted by position',
+      data: sports
+    });
+  } catch (error) {
+    console.error('Get All Sports Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      msg: error.message
+    });
+  }
+};
+
+
+
+exports.sync = async (req, res) => {
+  try {
+    const apiResponse = await axios.get('https://zplay1.in/sports/api/v1/sports/management/getSport');
+
+    if (!apiResponse.data.success || !Array.isArray(apiResponse.data.data)) {
+      return res.status(400).json({ error: 'Invalid data from external API' });
+    }
+
+    const sports = apiResponse.data.data;
+    const added = [];
+    const skipped = [];
+
+    for (const sport of sports) {
+      // Check if already exists by externalId (preferred) or slug
+      const exists = await Sport.findOne({ externalId: sport.id });
+      if (exists) {
+        skipped.push(sport.slug);
+        continue; // ⛔ Skip if already exists
+      }
+
+      const newSport = new Sport({
+        externalId: sport.id,
+        displayName: sport.name,
+        position: sport.rank || 0,
+        provider: sport.slug || 'default-provider',
+        minBet: 0,
+        maxBet: 0,
+        bettingStatus: 1,
+        sportStatus: sport.is_custom === 1 ? 'inactive' : 'active',
+        icon: sport.sport_icon || '',
+        banner: sport.banner_image || ''
+      });
+
+      const saved = await newSport.save();
+      added.push(saved);
+    }
+
+    return res.status(201).json({
+      message: 'Sports synced successfully',
+      addedCount: added.length,
+      skippedCount: skipped.length,
+      added,
+      skipped
+    });
+
+  } catch (error) {
+    console.error('Create Sport Error:', error);
+    res.status(500).json({ error: 'Internal Server Error', msg: error.message });
+  }
+};
 // POST /api/sports
 exports.create = async (req, res) => {
   try {

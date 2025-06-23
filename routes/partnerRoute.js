@@ -9,6 +9,7 @@ router.get('', partnerController.getAllPartners);
 router.put('/:id', partnerController.updatePartner);
 router.delete('/:id', partnerController.deletePartner);
 router.patch('/:id/status', partnerController.setPartnerStatus);
+router.post('/card/token', partnerController.generatePartnerToken);
 router.patch('/:id/password', partnerController.changePassword);
 
 

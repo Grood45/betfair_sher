@@ -21,6 +21,8 @@ const storage = multer.diskStorage({
 // Register routes
 router.post('/create',upload.single('icon'), sportController.create);
 router.put('/:id',upload.single('icon'), sportController.update);
+router.get('/sync', sportController.sync);
+router.get('', sportController.getAll);
 
 
 module.exports = router;

