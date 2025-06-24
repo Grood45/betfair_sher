@@ -28,6 +28,10 @@ const matchSchema = new mongoose.Schema({
   market_internal_id: Number,
   isMatchLive: Boolean,
   sport_name: String,
+  isBettingEnabled: {
+    type: Boolean,
+    default: true
+  },
   inplay: Boolean,
   runners: Array,
   runnerNames: Array,

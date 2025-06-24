@@ -115,3 +115,37 @@ exports.getAllMatches = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
   }
 };
+
+
+// Toggle betting using Mongo _id
+exports.toggleBetting = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isBettingEnabled } = req.body;
+
+    if (typeof isBettingEnabled !== 'boolean') {
+      return res.status(400).json({ message: 'isBettingEnabled must be true or false' });
+    }
+
+    const match = await Match.findByIdAndUpdate(
+      id,
+      { isBettingEnabled },
+      { new: true }
+    );
+
+    if (!match) {
+      return res.status(404).json({ message: 'Match not found' });
+    }
+
+    res.status(200).json({
+      message: `Betting has been ${isBettingEnabled ? 'enabled' : 'disabled'}`,
+      match
+    });
+
+  } catch (err) {
+    console.error('Toggle betting error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+

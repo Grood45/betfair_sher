@@ -7,5 +7,6 @@ router.get('/sync', matchController.syncAllMatches);
 router.get('', matchController.getAllMatches);
 // Public API to get from DB
 router.get('/:sportId', matchController.getMatchesBySportId);
+router.patch('/:id/betting', matchController.toggleBetting);
 
 module.exports = router;
