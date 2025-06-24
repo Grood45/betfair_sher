@@ -66,6 +66,7 @@ exports.sync = async (req, res) => {
 
       const newSport = new Sport({
         externalId: sport.id,
+        sportId: sport.id,
         displayName: sport.name,
         position: sport.rank || 0,
         provider: sport.slug || 'default-provider',

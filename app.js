@@ -19,7 +19,8 @@ connectDB();
 
 
 
-const uploadDir = path.join(__dirname, '..', 'uploads', 'icons');
+const uploadDir = path.join(__dirname, './', 'uploads', 'icons');
+console.log(uploadDir);
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -62,6 +63,7 @@ app.use("/api", routes.workerRoute);
 app.use("/api/partner", routes.partnerRoute);
 app.use("/api/score", routes.scoreApiRoute);
 app.use("/api/sport", routes.sportRoute);
+app.use("/api/matches", routes.matchRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {

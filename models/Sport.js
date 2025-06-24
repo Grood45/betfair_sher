@@ -4,6 +4,7 @@ const sportSchema = new mongoose.Schema({
   icon: String,                // icon filename or URL
   banner: String,                // banner filename or URL
   externalId: Number,
+  sportId: Number,
   displayName: { type: String, required: true },
   position: { type: Number, default: 1 },
   provider: { type: String, default: 'Manual' },
