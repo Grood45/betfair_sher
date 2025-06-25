@@ -1,6 +1,17 @@
 // models/User.js
 const mongoose = require('mongoose');
 
+const childMenuSchema = new mongoose.Schema({
+  label: { type: String, required: true },
+  key: { type: String, required: true }
+}, { _id: false });
+
+const menuSchema = new mongoose.Schema({
+  label: { type: String, required: true },
+  key: { type: String, required: true },
+  children: [childMenuSchema]
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -16,7 +27,7 @@ const userSchema = new mongoose.Schema({
     creatorId: {
       type: String
     },
-    customMenus: [String]
+    customMenus: [menuSchema]
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
