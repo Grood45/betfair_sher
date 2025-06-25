@@ -158,7 +158,8 @@ exports.refreshToken = (req, res) => {
 
   exports.getLoginHistory = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.user.id;
+      ;
 
   
       if (!userId) {
@@ -227,13 +228,13 @@ exports.createRole = async (req, res) => {
 
 exports.getUserProfile = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const user = await User.findById(userId).select('-password'); // Exclude password
+    const user = await User.findById(userId).select('-password -customMenus'); // Exclude password
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
