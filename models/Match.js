@@ -6,6 +6,7 @@ const matchSchema = new mongoose.Schema({
   event_id: { type: Number, unique: true, required: true },
   eventId: { type: Number, unique: true, required: true },
   sport_id: Number,
+  sportId: String,
   league_id: Number,
   event_name: String,
   event_date: Date,

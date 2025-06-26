@@ -11,7 +11,7 @@ const axios = require('axios');
 
 exports.syncAllMatches = async (req, res) => {
   try {
-    const sports = await Sport.find({ externalId: { $ne: null } }).select('externalId');
+    const sports = await Sport.find({ externalId: { $ne: null } }).select('_id externalId');
 
     if (!sports || sports.length === 0) {
       return res.status(404).json({ message: 'No sports found with externalId' });
@@ -45,7 +45,8 @@ exports.syncAllMatches = async (req, res) => {
           .map(m => ({
             ...m,
             eventId: m.event_id,
-            sport_id: sportId // make sure this matches your Match schema
+            sport_id: sportId ,
+            sportId: sport._id
           }));
 
         if (newMatches.length > 0) {
@@ -98,7 +99,7 @@ exports.getAllMatches = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const matches = await Match.find()
-      .sort({ _id: -1 }) // Latest first
+      .sort({ _id: 1 }) // Latest first
       .skip(skip)
       .limit(limit);
 

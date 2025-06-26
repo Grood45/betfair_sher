@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Sport = require('../models/Sport');
 const User = require('../models/User');
+const Match = require('../models/Match');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const fs = require('fs');
 const path = require('path');
@@ -165,7 +166,7 @@ exports.update = async (req, res) => {
         }
       }
 
-      // Save new icon path
+      // Save new icon pathUser
       iconUpdate.icon = `/uploads/icons/${req.file.filename}`;
     }
 
@@ -183,6 +184,12 @@ exports.update = async (req, res) => {
         ...iconUpdate
       },
       { new: true }
+    );
+
+    await Match.updateMany(
+      {sportId:id},
+      { isBettingEnabled: bettingStatus }, // update field
+      { new: true } // return the updated document
     );
 
     res.json({ message: 'Sport updated successfully', data: updatedSport });

@@ -10,7 +10,7 @@ const sportSchema = new mongoose.Schema({
   provider: { type: String, default: 'Manual' },
   minBet: { type: Number, default: 0 },
   maxBet: { type: Number, default: 0 },
-  bettingStatus: { type: Number, default: 0 }, // true = enabled
+  bettingStatus: { type: Boolean, default: false },
   sportStatus: { type: String, enum: ['active', 'inactive'], default: 'active' },
 }, {
   timestamps: true
