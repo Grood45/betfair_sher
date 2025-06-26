@@ -10,7 +10,7 @@ const urlService = require('./config/utils/asyncurl.min');
 const port = process.env.PORT || 3000;
 const routes = require('./routes/routeWrapper');
 const fs = require('fs');
-
+app.set('trust proxy', true);
 
 const connectDB = require('./config/db/mongoDB');
 
@@ -64,6 +64,7 @@ app.use("/api/partner", routes.partnerRoute);
 app.use("/api/score", routes.scoreApiRoute);
 app.use("/api/sport", routes.sportRoute);
 app.use("/api/matches", routes.matchRoute);
+app.use("/api/market", routes.marketRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {

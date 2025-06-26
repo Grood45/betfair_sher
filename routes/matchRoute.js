@@ -8,5 +8,6 @@ router.get('', matchController.getAllMatches);
 // Public API to get from DB
 router.get('/:sportId', matchController.getMatchesBySportId);
 router.patch('/:id/betting', matchController.toggleBetting);
+router.get('/events/summary', matchController.getEventSummary);
 
 module.exports = router;

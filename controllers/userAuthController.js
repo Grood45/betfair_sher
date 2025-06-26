@@ -88,7 +88,8 @@ exports.loginUser = async (req, res) => {
     const refreshToken = generateRefreshToken(payload);
 
     // Save login history (first login)
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const forwarded = req.headers['x-forwarded-for'];
+    const ipAddress = forwarded ? forwarded.split(',')[0] : req.ip;
     const browser = req.headers['user-agent'];
 
    const history = await LoginHistory.create({

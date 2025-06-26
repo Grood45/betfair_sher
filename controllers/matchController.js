@@ -150,3 +150,41 @@ exports.toggleBetting = async (req, res) => {
 };
 
 
+exports.getEventSummary = async (req, res) => {
+  try {
+    const allEvents = await Match.countDocuments();
+
+    const liveEvents = await Match.countDocuments({
+      $or: [{ isMatchLive: true }, { inplay: true }]
+    });
+
+    const upcomingEvents = allEvents - liveEvents;
+
+    const activeMarkets = await Match.countDocuments({
+      market_internal_id: { $ne: null }
+    });
+
+    // Assuming providerId field exists
+    const providers = await Match.distinct('providerId');
+    const providerCount = providers.length;
+
+    return res.status(200).json({
+      message: 'Event summary fetched successfully',
+      data: {
+        totalEvents: allEvents,
+        liveEvents,
+        upcomingEvents,
+        activeMarkets,
+        providers: providerCount
+      }
+    });
+  } catch (err) {
+    console.error('Error in event summary:', err.message);
+    return res.status(500).json({
+      message: 'Failed to fetch event summary',
+      error: err.message
+    });
+  }
+};
+
+
