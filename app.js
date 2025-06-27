@@ -65,6 +65,7 @@ app.use("/api/score", routes.scoreApiRoute);
 app.use("/api/sport", routes.sportRoute);
 app.use("/api/matches", routes.matchRoute);
 app.use("/api/market", routes.marketRoute);
+app.use("/api/website", routes.websiteRoute);
 
 // 404 Error handling
 app.use((req, res, next) => {
