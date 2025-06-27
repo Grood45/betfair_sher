@@ -10,4 +10,7 @@ router.get('/:sportId', matchController.getMatchesBySportId);
 router.patch('/:id/betting', matchController.toggleBetting);
 router.get('/events/summary', matchController.getEventSummary);
 
+router.get('/bysport/:sportId', matchController.getAllMatchesBySportId);
+
+
 module.exports = router;

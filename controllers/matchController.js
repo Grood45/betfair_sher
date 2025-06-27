@@ -187,4 +187,42 @@ exports.getEventSummary = async (req, res) => {
   }
 };
 
+exports.getAllMatchesBySportId = async (req, res) => {
+  try {
+    // Get query params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const sportId = req.params.sportId;
+
+console.log(sportId);
+
+    const skip = (page - 1) * limit;
+
+    // Build filter
+    const filter = {};
+    if (sportId) {
+      filter.sportId = sportId;
+    }
+
+    // Query matches with optional sportId filter
+    const matches = await Match.find(filter)
+      .sort({ _id: 1 }) // oldest first; use -1 for newest first
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Match.countDocuments(filter);
+
+    res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      matches
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
+  }
+};
+
+
 
