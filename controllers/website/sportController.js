@@ -10,7 +10,7 @@ const axios = require('axios');
 
 exports.getAllSportNames = async (req, res) => {
   try {
-    const sports = await Sport.find({}, { displayName: 1 }); // select name and _id
+    const sports = await Sport.find({}, { displayName: 1 ,icon:1}); // select name and _id
                                  // optional: sort alphabetically
 
     return res.status(200).json({
