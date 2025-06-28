@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Sport = require('../../models/Sport');
+const Match = require('../../models/Match');
 
 const fs = require('fs');
 const path = require('path');
@@ -23,5 +24,36 @@ exports.getAllSportNames = async (req, res) => {
       message: 'Failed to fetch sports',
       error: err.message
     });
+  }
+};
+
+
+exports.getInplayMatches = async (req, res) => {
+  try {
+    const { sportName, sportId } = req.params;
+
+    const filter = {
+      $or: [{ isMatchLive: true }, { inplay: true }]
+    };
+
+    if (sportName) {
+      filter.sport_name = sportName;
+    }
+
+    if (sportId) {
+      filter.sportId = sportId;
+    }
+
+    const matches = await Match.find(filter).sort({ event_date: 1 });
+
+    res.status(200).json({
+      message: 'In-play matches fetched successfully',
+      count: matches.length,
+      data: matches
+    });
+
+  } catch (err) {
+    console.error('Error fetching in-play matches:', err);
+    res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
   }
 };

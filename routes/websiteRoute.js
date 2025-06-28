@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 
 router.get('/sport/list', sportController.getAllSportNames);
+router.get('/sport/inplay/:sportId', sportController.getInplayMatches);
 
 
 module.exports = router;
