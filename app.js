@@ -58,14 +58,18 @@ app.get('/', (req, res) => {
   res.send('Hello, Welcome to my Node.js app running on VPS!');
 });
 
-app.get('/api/proxy-sports', async (req, res) => {
+app.post('/api/proxy-sports', async (req, res) => {
   try {
-    const { type, sportId } = req.query;
+    const { type, sportId } = req.body; // use body for POST
     let url = '';
+    let method = 'get';
+    let payload = null;
 
     switch (type) {
       case 'sport-list':
         url = 'https://apidiamond.online/sports/api/v2/api/sport-list';
+        method = 'post';
+        payload = {}; // send empty body or required body if needed
         break;
 
       case 'listGames':
@@ -92,11 +96,17 @@ app.get('/api/proxy-sports', async (req, res) => {
         return res.status(400).json({ error: 'Invalid type parameter' });
     }
 
-    const response = await axios.get(url);
+    // Call the API using axios
+    const response = await axios({
+      url,
+      method,
+      data: payload
+    });
+
     res.status(200).json(response.data);
 
   } catch (err) {
-    console.error('Error fetching data:', err.message);
+    console.error('Proxy API error:', err.message);
     res.status(500).json({ message: 'Proxy fetch failed', error: err.message });
   }
 });
