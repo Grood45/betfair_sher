@@ -26,10 +26,11 @@ exports.syncAllMatches = async (req, res) => {
 
       try {
         const response = await axios.get(url);
-        const matches = response.data?.data;
+        const matches = response.data?.sports || response.data?.data;
 
         if (!Array.isArray(matches)) {
           console.warn(`Invalid match data for sportId ${sportId}`);
+          console.log('Raw response:', response.data);
           continue;
         }
 
