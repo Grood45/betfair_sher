@@ -22,7 +22,7 @@ exports.syncAllMatches = async (req, res) => {
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
-      const url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/false`; // false = upcoming, true = in-play
+      const url = `https://apidiamond.online/sports/api/listGames/${sportId}/1`;
 
       try {
         const response = await axios.get(url);
@@ -159,7 +159,7 @@ exports.getEventSummary = async (req, res) => {
     const allEvents = await Match.countDocuments();
 
     const liveEvents = await Match.countDocuments({
-      $or: [{ isMatchLive: true }, { inplay: true }]
+      $or: [{ isMatchLive: true }, { is_in_play: true }]
     });
 
     const upcomingEvents = allEvents - liveEvents;

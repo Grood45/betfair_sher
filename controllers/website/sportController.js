@@ -33,7 +33,7 @@ exports.getInplayMatches = async (req, res) => {
     const { sportName, sportId } = req.params;
 
     const filter = {
-      $or: [{ isMatchLive: true }, { inplay: true }]
+      $or: [{ isMatchLive: true }, { is_in_play: true }]
     };
 
     if (sportName) {
