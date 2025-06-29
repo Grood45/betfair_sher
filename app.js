@@ -102,6 +102,7 @@ app.post('/api/proxy-sports', async (req, res) => {
       method,
       data: payload
     });
+    
 
     res.status(200).json(response.data);
 
