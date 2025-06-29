@@ -48,7 +48,8 @@ exports.syncAllMatches = async (req, res) => {
             ...m,
             eventId: m.event_id,
             sport_id: sportId,    // external value
-            sportId: sport._id    // local ObjectId reference
+            sportId: sport._id,
+            betfair_event_id:sportId
           }));
 
         if (newMatches.length > 0) {
