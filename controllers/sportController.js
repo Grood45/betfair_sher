@@ -86,7 +86,8 @@ exports.sync = async (req, res) => {
         oddsProvider: sport.oddsProvider || '',
         featured: sport.featured === '1',
         betfairEventTypeId: sport.betfairEventTypeId || '',
-        sportradarSportId: sport.sportradarSportId || ''
+        sportradarSportId: sport.sportradarSportId || '',
+        sportId: sport.betfairEventTypeId || ''
       });
 
       const saved = await newSport.save();
@@ -185,10 +186,11 @@ exports.update = async (req, res) => {
       id,
       {
         displayName,
+        sportName:displayName,
         position,
         provider,
-        minBet,
-        maxBet,
+        minBetLimit: minBet, 
+        maxBetLimit: maxBet,
         bettingStatus,
         sportStatus,
         ...iconUpdate
