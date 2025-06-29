@@ -47,36 +47,46 @@ exports.getAll = async (req, res) => {
 
 exports.sync = async (req, res) => {
   try {
-    const apiResponse = await axios.get('https://zplay1.in/sports/api/v1/sports/management/getSport');
+    const apiResponse = await axios.post('https://apidiamond.online/sports/api/v2/api/sport-list');
 
-    if (!apiResponse.data.success || !Array.isArray(apiResponse.data.data)) {
+    const data = apiResponse.data;
+
+    if (!data || data.status !== "1" || !Array.isArray(data.sports)) {
       return res.status(400).json({ error: 'Invalid data from external API' });
     }
 
-    const sports = apiResponse.data.data;
+    const sports = data.sports;
     const added = [];
     const skipped = [];
 
     for (const sport of sports) {
-      // Check if already exists by externalId (preferred) or slug
-      const exists = await Sport.findOne({ externalId: sport.id });
+      // Check if already exists by sportName or betfairEventTypeId
+      const exists = await Sport.findOne({
+        $or: [
+          { displayName: sport.sportName },
+          { betfairEventTypeId: sport.betfairEventTypeId }
+        ]
+      });
+
       if (exists) {
-        skipped.push(sport.slug);
-        continue; // ⛔ Skip if already exists
+        skipped.push(sport.sportName);
+        continue;
       }
 
       const newSport = new Sport({
-        externalId: sport.id,
-        sportId: sport.id,
-        displayName: sport.name,
-        position: sport.rank || 0,
-        provider: sport.slug || 'default-provider',
-        minBet: 0,
-        maxBet: 0,
-        bettingStatus: 1,
-        sportStatus: sport.is_custom === 1 ? 'inactive' : 'active',
-        icon: sport.sport_icon || '',
-        banner: sport.banner_image || ''
+        displayName: sport.sportName,
+        sportName: sport.sportName,
+        childName: sport.childName || '',
+        marketCount: parseInt(sport.marketCount || '0'),
+        position: parseInt(sport.position || '0'),
+        sportStatus: sport.status === 'active' ? 'active' : 'inactive',
+        bettingEnabled: sport.bettingEnabled === 'true',
+        maxBetLimit: parseInt(sport.maxBetLimit || '0'),
+        minBetLimit: parseInt(sport.minBetLimit || '0'),
+        oddsProvider: sport.oddsProvider || '',
+        featured: sport.featured === '1',
+        betfairEventTypeId: sport.betfairEventTypeId || '',
+        sportradarSportId: sport.sportradarSportId || ''
       });
 
       const saved = await newSport.save();
@@ -92,7 +102,7 @@ exports.sync = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Create Sport Error:', error);
+    console.error('Sync Sports Error:', error);
     res.status(500).json({ error: 'Internal Server Error', msg: error.message });
   }
 };
