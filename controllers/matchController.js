@@ -18,7 +18,6 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     let totalInserted = 0;
-    let totalSkipped = 0;
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
@@ -34,30 +33,17 @@ exports.syncAllMatches = async (req, res) => {
           continue;
         }
 
-        const matchesFromApi = matches.filter(m => m.event_id);
+        const preparedMatches = matches.map(m => ({
+          ...m,
+          sport_id: sportId,
+          sportId: sport._id,
+          betfair_event_id: sportId
+        }));
 
-        const existing = await Match.find({
-          eventId: { $in: matchesFromApi.map(m => m.event_id) }
-        }).select('eventId');
-
-        const existingIds = new Set(existing.map(e => e.eventId));
-
-        const newMatches = matchesFromApi
-          .filter(m => !existingIds.has(m.event_id))
-          .map(m => ({
-            ...m,
-            eventId: m.event_id,
-            sport_id: sportId,    // external value
-            sportId: sport._id,
-            betfair_event_id:sportId
-          }));
-
-        if (newMatches.length > 0) {
-          await Match.insertMany(newMatches);
+        if (preparedMatches.length > 0) {
+          await Match.insertMany(preparedMatches, { ordered: false });
+          totalInserted += preparedMatches.length;
         }
-
-        totalInserted += newMatches.length;
-        totalSkipped += existingIds.size;
 
       } catch (innerErr) {
         console.error(`Failed syncing sportId ${sportId}:`, innerErr.message);
@@ -66,15 +52,14 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'Sync completed',
-      totalInserted,
-      totalSkipped
+      message: 'Match sync completed (no filtering)',
+      totalInserted
     });
 
   } catch (err) {
     console.error('Sync error:', err.message);
     res.status(500).json({
-      message: 'Failed to sync matches for all sports',
+      message: 'Failed to sync matches',
       error: err.message
     });
   }
