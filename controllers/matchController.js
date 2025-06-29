@@ -11,20 +11,21 @@ const axios = require('axios');
 
 exports.syncAllMatches = async (req, res) => {
   try {
-    const sports = await Sport.find({ externalId: { $ne: null } }).select('_id externalId');
+    const sports = await Sport.find({ betfairEventTypeId: { $ne: null } }).select('_id betfairEventTypeId');
 
     if (!sports || sports.length === 0) {
-      return res.status(404).json({ message: 'No sports found with externalId' });
+      return res.status(404).json({ message: 'No sports found with betfairEventTypeId' });
     }
 
     let totalInserted = 0;
     let totalSkipped = 0;
 
     for (const sport of sports) {
-      const sportId = sport.externalId;
+      const sportId = sport.betfairEventTypeId;
+      const url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/false`; // false = upcoming, true = in-play
 
       try {
-        const response = await axios.get(`https://zplay1.in/pb/api/v1/events/matches/${sportId}`);
+        const response = await axios.get(url);
         const matches = response.data?.data;
 
         if (!Array.isArray(matches)) {
@@ -45,8 +46,8 @@ exports.syncAllMatches = async (req, res) => {
           .map(m => ({
             ...m,
             eventId: m.event_id,
-            sport_id: sportId ,
-            sportId: sport._id
+            sport_id: sportId,    // external value
+            sportId: sport._id    // local ObjectId reference
           }));
 
         if (newMatches.length > 0) {
@@ -58,7 +59,7 @@ exports.syncAllMatches = async (req, res) => {
 
       } catch (innerErr) {
         console.error(`Failed syncing sportId ${sportId}:`, innerErr.message);
-        continue; // Proceed to next sport
+        continue;
       }
     }
 
@@ -76,6 +77,7 @@ exports.syncAllMatches = async (req, res) => {
     });
   }
 };
+
 
 
 exports.getMatchesBySportId = async (req, res) => {
