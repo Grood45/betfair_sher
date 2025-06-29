@@ -4,6 +4,7 @@ const partnerController = require('../controllers/partnerController');
 
 // Register routes
 router.post('/create', partnerController.create);
+router.post('/signin', partnerController.loginUser);
 router.get('/:id', partnerController.getPartnerById);
 router.get('', partnerController.getAllPartners);
 router.put('/:id', partnerController.updatePartner);

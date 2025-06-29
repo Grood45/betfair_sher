@@ -3,14 +3,9 @@ const jwt = require('jsonwebtoken');
 const { exec } = require('child_process');
 const Partner = require('../models/Partner');
 const User = require('../models/User');
+const LoginHistory = require('../models/loginHistory');
 
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
-
-const cookieOptions = {
-    httpOnly: true,
-    secure: true,          // Set to true in production (HTTPS)
-    sameSite: 'Strict',    // Or 'Lax' if cross-origin
-  };
 
 
 
@@ -52,6 +47,7 @@ const cookieOptions = {
         });
       }
   
+
       const partner = new Partner({
         partnerName,
         contactPerson,
@@ -64,6 +60,7 @@ const cookieOptions = {
         status,
         callbackUrls,
         endpoints,
+        password:hashedPassword,
         notes,
         creatorId
       });
@@ -71,15 +68,15 @@ const cookieOptions = {
       await partner.save();
 
           // Create user with hashed password
-    const user = new User({
-      username: email,       // ✅ Store email in username
-      mobile: phone,         // ✅ Store phone in mobile field
-      password: hashedPassword, // ✅ Store hashed password
-      role: 'partner',
-      creatorId
-    });
+    // const user = new User({
+    //   username: email,       // ✅ Store email in username
+    //   mobile: phone,         // ✅ Store phone in mobile field
+    //   password: hashedPassword, // ✅ Store hashed password
+    //   role: 'partner',
+    //   creatorId
+    // });
 
-    await user.save();
+    // await user.save();
   
       res.status(201).json({
         message: 'Partner created successfully',
@@ -253,6 +250,63 @@ exports.changePassword = async (req, res) => {
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ error: 'Internal Server Error','msg':error.message });
+  }
+};
+
+exports.loginUser = async (req, res) => {
+  const { login, password } = req.body; // `login` can be username OR mobile
+
+  try {
+    // Try to find user by username or mobile
+    const user = await Partner.findOne({
+      $or: [
+        { email: login },
+        { mobile: login }
+      ]
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid password' });
+    }
+
+
+    const payload = {
+      id: user._id,
+      role: user.role,
+      username: user.email
+    };
+    // Generate tokens
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    // Save login history (first login)
+    const forwarded = req.headers['x-forwarded-for'];
+    const ipAddress = forwarded ? forwarded.split(',')[0] : req.ip;
+    const browser = req.headers['user-agent'];
+
+   const history = await LoginHistory.create({
+      userId: user._id,
+      ipAddress,
+      browser
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      username: user.email,
+      _id: user._id,
+      role: user.role,
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
