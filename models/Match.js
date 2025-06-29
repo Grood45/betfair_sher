@@ -19,7 +19,7 @@ const marketSchema = new mongoose.Schema({
 }, { _id: false });
 
 const matchSchema = new mongoose.Schema({
-  event_id: { type: String, required: true, unique: true },      // betfair_event_id
+  event_id: { type: String },      // betfair_event_id
   betfair_event_id: String,
   sportradar_event_id: String,
   sky_event_id: String,
