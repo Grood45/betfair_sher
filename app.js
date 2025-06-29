@@ -57,6 +57,49 @@ app.get('/', (req, res) => {
   res.send('Hello, Welcome to my Node.js app running on VPS!');
 });
 
+app.get('/api/proxy-sports', async (req, res) => {
+  try {
+    const { type, sportId } = req.query;
+    let url = '';
+
+    switch (type) {
+      case 'sport-list':
+        url = 'https://apidiamond.online/sports/api/v2/api/sport-list';
+        break;
+
+      case 'listGames':
+        if (!sportId) return res.status(400).json({ error: 'sportId is required for listGames' });
+        url = `https://apidiamond.online/sports/api/v1/listGames/${sportId}/1`;
+        break;
+
+      case 'inplay':
+        if (!sportId) return res.status(400).json({ error: 'sportId is required for inplay' });
+        url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/true`;
+        break;
+
+      case 'upcoming':
+        if (!sportId) return res.status(400).json({ error: 'sportId is required for upcoming' });
+        url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/false`;
+        break;
+
+      case 'eventsBySport':
+        if (!sportId) return res.status(400).json({ error: 'sportId is required for eventsBySport' });
+        url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
+        break;
+
+      default:
+        return res.status(400).json({ error: 'Invalid type parameter' });
+    }
+
+    const response = await axios.get(url);
+    res.status(200).json(response.data);
+
+  } catch (err) {
+    console.error('Error fetching data:', err.message);
+    res.status(500).json({ message: 'Proxy fetch failed', error: err.message });
+  }
+});
+
 app.use("/", routes.authRoute);
 app.use("/api/dashboard", routes.dashboardRoute);
 app.use("/api", routes.workerRoute);
