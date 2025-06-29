@@ -11,6 +11,7 @@ const port = process.env.PORT || 3000;
 const routes = require('./routes/routeWrapper');
 const fs = require('fs');
 app.set('trust proxy', true);
+const axios = require('axios');
 
 const connectDB = require('./config/db/mongoDB');
 
