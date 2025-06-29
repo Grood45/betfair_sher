@@ -18,52 +18,72 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     let totalInserted = 0;
+    let totalSkipped = 0;
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
-      const url = `https://apidiamond.online/sports/api/v1/listGames/${sportId}/1`;
 
-      try {
-        const response = await axios.get(url);
-        const matches = response.data?.result || response.data?.data;
+      for (const isInPlay of [true, false]) {
+        const url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/${isInPlay}`;
 
-        if (!Array.isArray(matches)) {
-          console.warn(`Invalid match data for sportId ${sportId}`);
-          console.log('Raw response:', response.data);
+        try {
+          const response = await axios.get(url);
+          const matches = response.data?.sports || response.data?.data;
+
+          if (!Array.isArray(matches)) {
+            console.warn(`Invalid match data for sportId ${sportId}, inPlay=${isInPlay}`);
+            console.log('Raw response:', response.data);
+            continue;
+          }
+
+          const matchesFromApi = matches.filter(m => m.event_id);
+
+          const existing = await Match.find({
+            eventId: { $in: matchesFromApi.map(m => m.event_id) }
+          }).select('eventId');
+
+          const existingIds = new Set(existing.map(e => e.eventId));
+
+          const newMatches = matchesFromApi
+            .filter(m => !existingIds.has(m.event_id))
+            .map(m => ({
+              ...m,
+              eventId: m.event_id,
+              sport_id: sportId,
+              sportId: sport._id,
+              betfair_event_id: sportId,
+              is_in_play: isInPlay.toString() // explicitly mark as "true"/"false" string
+            }));
+
+          if (newMatches.length > 0) {
+            await Match.insertMany(newMatches);
+          }
+
+          totalInserted += newMatches.length;
+          totalSkipped += existingIds.size;
+
+        } catch (innerErr) {
+          console.error(`Failed syncing sportId ${sportId} (inPlay=${isInPlay}):`, innerErr.message);
           continue;
         }
-
-        const preparedMatches = matches.map(m => ({
-          ...m,
-          sport_id: sportId,
-          sportId: sport._id,
-          betfair_event_id: sportId
-        }));
-
-        if (preparedMatches.length > 0) {
-          await Match.insertMany(preparedMatches, { ordered: false });
-          totalInserted += preparedMatches.length;
-        }
-
-      } catch (innerErr) {
-        console.error(`Failed syncing sportId ${sportId}:`, innerErr.message);
-        continue;
       }
     }
 
     return res.status(200).json({
-      message: 'Match sync completed (no filtering)',
-      totalInserted
+      message: 'Sync completed',
+      totalInserted,
+      totalSkipped
     });
 
   } catch (err) {
     console.error('Sync error:', err.message);
     res.status(500).json({
-      message: 'Failed to sync matches',
+      message: 'Failed to sync matches for all sports',
       error: err.message
     });
   }
 };
+
 
 
 
