@@ -6,7 +6,9 @@ const Match = require('../../models/Match');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const moment = require('moment-timezone');
 
+const currentIST = moment().tz("Asia/Kolkata").toDate();
 
 
 exports.getAllSportNames = async (req, res) => {
@@ -28,12 +30,15 @@ exports.getAllSportNames = async (req, res) => {
 };
 
 
+
 exports.getInplayMatches = async (req, res) => {
   try {
     const { sportName, sportId } = req.params;
 
+
+    // Build filter based on IST time
     const filter = {
-      $or: [{ isMatchLive: true }, { is_in_play: true }]
+      event_date: { $lte: currentIST }
     };
 
     if (sportName) {
@@ -57,3 +62,4 @@ exports.getInplayMatches = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
   }
 };
+
