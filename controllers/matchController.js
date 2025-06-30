@@ -6,7 +6,10 @@ const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const moment = require('moment-timezone');
 
+// Get current time in IST
+const currentISTTime = moment().tz("Asia/Kolkata").toDate();
 
 
 exports.syncAllMatches = async (req, res) => {
@@ -164,8 +167,8 @@ exports.getEventSummary = async (req, res) => {
     const allEvents = await Match.countDocuments();
 
     const liveEvents = await Match.countDocuments({
-      $or: [{ isMatchLive: true }, { is_in_play: true }]
-    });
+      event_date: { $lte: currentISTTime }
+    }); 
 
     const upcomingEvents = allEvents - liveEvents;
 
