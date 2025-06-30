@@ -214,8 +214,7 @@ exports.update = async (req, res) => {
 
 exports.getAllSportNames = async (req, res) => {
   try {
-    const sports = await Sport.find({}, { displayName: 1,icon:1 }); // select name and _id
-                                 // optional: sort alphabetically
+    const sports = await Sport.find({}, { displayName: 1, icon: 1, position: 1 }).sort({ position: 1 });
 
     return res.status(200).json({
       message: 'Sports fetched successfully',
