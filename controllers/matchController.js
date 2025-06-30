@@ -172,13 +172,22 @@ exports.getEventSummary = async (req, res) => {
 
     const upcomingEvents = allEvents - liveEvents;
 
-    const activeMarkets = await Match.countDocuments({
-      market_internal_id: { $ne: null }
-    });
+
+    const totalMarketCount = await Sport.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$marketCount" }
+        }
+      }
+    ]);
+    
+    const activeMarkets = totalMarketCount[0]?.total || 0;
 
     // Assuming providerId field exists
     const providers = await Match.distinct('providerId');
     const providerCount = providers.length;
+
 
     return res.status(200).json({
       message: 'Event summary fetched successfully',
