@@ -1,29 +1,28 @@
 const User = require('../models/User');
 const Sport = require('../models/Sport');
 const Match = require('../models/Match');
+const moment = require('moment-timezone');
+
+// Get current time in IST
+const currentISTTime = moment().tz("Asia/Kolkata").toDate();
+
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Current IST time
+    const currentISTTime = moment().tz("Asia/Kolkata").toDate();
 
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // Start and end of today in IST
+    const todayStart = moment().tz("Asia/Kolkata").startOf('day').toDate();
+    const todayEnd = moment().tz("Asia/Kolkata").endOf('day').toDate();
 
-    const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    // Start and end of tomorrow in IST
+    const tomorrowStart = moment(todayStart).add(1, 'day').toDate();
+    const tomorrowEnd = moment(todayEnd).add(1, 'day').toDate();
 
-    const tomorrowEnd = new Date(todayEnd);
-    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-
-    const [
-      allSports,
-      inPlayCount,
-      todayMatches,
-      tomorrowMatches
-    ] = await Promise.all([
+    const [allSports, inPlayCount, todayMatches, tomorrowMatches] = await Promise.all([
       Sport.countDocuments(),
-      Match.countDocuments({ $or: [{ isMatchLive: true }, { inplay: true }] }),
+      Match.countDocuments({ event_date: { $lte: currentISTTime } }),  // LIVE Matches
       Match.countDocuments({ event_date: { $gte: todayStart, $lte: todayEnd } }),
       Match.countDocuments({ event_date: { $gte: tomorrowStart, $lte: tomorrowEnd } })
     ]);
@@ -35,11 +34,10 @@ exports.getDashboardStats = async (req, res) => {
         inPlayCount,
         today: todayMatches,
         tomorrow: tomorrowMatches,
-        totalBets: 0,        // default value since Bet model doesn't exist
-        totalAmount: 0       // default value
+        totalBets: 0,        // placeholder
+        totalAmount: 0       // placeholder
       }
     });
-
   } catch (err) {
     console.error('Dashboard error:', err.message);
     res.status(500).json({ message: 'Failed to fetch dashboard stats', error: err.message });
