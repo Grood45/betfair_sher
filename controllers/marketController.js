@@ -80,3 +80,24 @@ exports.syncMarketList = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+exports.getMarketListByEventId = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({ message: 'Missing eventId in params' });
+    }
+
+    const markets = await MarketList.find({ 'event.id': eventId });
+
+    res.status(200).json({
+      message: 'Market list fetched successfully',
+      total: markets.length,
+      data: markets
+    });
+  } catch (err) {
+    console.error('Error fetching market list:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
