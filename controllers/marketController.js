@@ -1,6 +1,6 @@
 const axios = require('axios');
 const Marketlimit = require('../models/Marketlimit');
-const Marketlist = require('../models/Marketlist');
+const MarketList = require('../models/Marketlist');
 
 exports.getAllLimits = async (req, res) => {
   try {
