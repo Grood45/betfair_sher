@@ -1,4 +1,6 @@
+const axios = require('axios');
 const Marketlimit = require('../models/Marketlimit');
+const Marketlist = require('../models/Marketlist');
 
 exports.getAllLimits = async (req, res) => {
   try {
@@ -27,5 +29,54 @@ exports.createOrUpdateLimit = async (req, res) => {
     res.status(200).json({ message: 'Market limit saved successfully', data: updated });
   } catch (err) {
     res.status(500).json({ message: 'Failed to save market limit', error: err.message });
+  }
+};
+
+
+exports.syncMarketList = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({ message: 'Missing eventId in query params' });
+    }
+
+    // Make POST request with eventId in body
+    const response = await axios.post(
+      'https://apidiamond.online/sports/api/market-list',
+      { eventId }  // sending eventId in POST body
+    );
+
+    const marketDataArray = response.data?.data;
+
+    if (!Array.isArray(marketDataArray)) {
+      return res.status(400).json({ message: 'Invalid market data received' });
+    }
+
+    let inserted = 0;
+    let updated = 0;
+
+    for (const market of marketDataArray) {
+      const existing = await MarketList.findOne({ marketId: market.marketId });
+
+      await MarketList.findOneAndUpdate(
+        { marketId: market.marketId },
+        { $set: market },
+        { new: true, upsert: true }
+      );
+
+      if (existing) updated++;
+      else inserted++;
+    }
+
+    res.status(200).json({
+      message: 'Market sync completed',
+      inserted,
+      updated
+    });
+
+  } catch (err) {
+    console.error('Error syncing markets:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
