@@ -74,13 +74,24 @@ app.post('/api/proxy-sports', async (req, res) => {
         payload = {}; // send empty body or required body if needed
         break;
 
-          case 'market-list':
+          case 'exchange':
             url = 'https://apidiamond.online/sports/api/market-list';
             method = 'post';
             payload = {eventId:eventId}; // send empty body or required body if needed
             break;
 
-            case 'odds-list':
+            case 'fancy':
+              if (!eventId) return res.status(400).json({ error: 'eventId is required for fancy' });
+              url = `https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`;
+              break;
+      
+              case 'premium':
+                url = 'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr';
+                method = 'post';
+                payload = {eventId:eventId,sportId:sportId}; // send empty body or required body if needed
+                break;
+
+            case 'premium':
               url = 'https://apidiamond.online/sports/api/v2/result-sport-data';
               method = 'post';
               payload = {eventId:eventId}; // send empty body or required body if needed
