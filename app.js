@@ -60,7 +60,7 @@ app.get('/', (req, res) => {
 
 app.post('/api/proxy-sports', async (req, res) => {
   try {
-    const { type, sportId } = req.body; // use body for POST
+    const { type, sportId,eventId } = req.body; // use body for POST
     let url = '';
     let method = 'get';
     let payload = null;
@@ -71,6 +71,19 @@ app.post('/api/proxy-sports', async (req, res) => {
         method = 'post';
         payload = {}; // send empty body or required body if needed
         break;
+
+          case 'market-list':
+            url = 'https://apidiamond.online/sports/api/market-list';
+            method = 'post';
+            payload = {eventId:eventId}; // send empty body or required body if needed
+            break;
+
+            case 'odds-list':
+              url = 'https://apidiamond.online/sports/api/v2/result-sport-data';
+              method = 'post';
+              payload = {eventId:eventId}; // send empty body or required body if needed
+              break;
+  
 
       case 'listGames':
         if (!sportId) return res.status(400).json({ error: 'sportId is required for listGames' });
