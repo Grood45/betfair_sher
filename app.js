@@ -40,8 +40,8 @@ app.use(express.urlencoded({ extended: true }));
 
 const allowedOrigins = [
   'https://sportmaindashboard.netlify.app',
-  'https://sportuserwebsite.netlify.app/',
-  'https://sportbackoffice.netlify.app/',
+  'https://sportuserwebsite.netlify.app',
+  'https://sportbackoffice.netlify.app',
   'http://localhost:5173'
 ];
 
