@@ -39,6 +39,8 @@ exports.syncAllMatches = async (req, res) => {
             continue;
           }
 
+          console.log('Response:', response.data);
+
           const matchesFromApi = matches.filter(m => m.event_id);
 
           const existing = await Match.find({
