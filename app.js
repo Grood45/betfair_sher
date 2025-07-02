@@ -84,6 +84,11 @@ app.post('/api/proxy-sports', async (req, res) => {
               if (!eventId) return res.status(400).json({ error: 'eventId is required for fancy' });
               url = `https://apidiamond.online/sports/api/v1/exchange/v1/player-operations/fancy/event/details/${eventId}`;
               break;
+
+              case 'oddBymarketId':
+                if (!marketId) return res.status(400).json({ error: 'marketId is required for odds' });
+                url = `https://apidiamond.online/sports/api/v1/macthodds/?ids=${marketId}`;
+                break;
       
               case 'premium':
                 url = 'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr';
