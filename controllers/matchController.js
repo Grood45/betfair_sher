@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const moment = require('moment-timezone');
-
+const deepEqual = require('fast-deep-equal');
 // Get current time in IST
 const currentISTTime = moment().tz("Asia/Kolkata").toDate();
 
@@ -21,6 +21,7 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     let totalInserted = 0;
+    let totalUpdated = 0;
     let totalSkipped = 0;
 
     for (const sport of sports) {
@@ -39,33 +40,35 @@ exports.syncAllMatches = async (req, res) => {
             continue;
           }
 
-          console.log('Response:', response.data);
+          for (const m of matches) {
+            if (!m.eventId) continue;
 
-          const matchesFromApi = matches.filter(m => m.event_id);
+            const existing = await Match.findOne({ eventId: m.eventId });
 
-          const existing = await Match.find({
-            eventId: { $in: matchesFromApi.map(m => m.event_id) }
-          }).select('eventId');
-
-          const existingIds = new Set(existing.map(e => e.eventId));
-
-          const newMatches = matchesFromApi
-            .filter(m => !existingIds.has(m.event_id))
-            .map(m => ({
+            const formattedData = {
               ...m,
-              eventId: m.event_id,
-              sport_id: sportId,
-              sportId: sport._id,
-              betfair_event_id: sportId,
-              is_in_play: isInPlay.toString() // explicitly mark as "true"/"false" string
-            }));
+              eventId: m.eventId,                          // primary key
+              betfair_event_id: m.eventId,
+              sport_id: sportId,                            // from API
+              sportId: sport._id,                           // ref to Sport model
+              is_in_play: isInPlay.toString()               // store as string (optional)
+            };
 
-          if (newMatches.length > 0) {
-            await Match.insertMany(newMatches);
+            if (!existing) {
+              await Match.create(formattedData);
+              totalInserted++;
+            } else {
+              const mClean = JSON.parse(JSON.stringify(formattedData));
+              const existingClean = JSON.parse(JSON.stringify(existing.toObject()));
+
+              if (!deepEqual(existingClean, mClean)) {
+                await Match.updateOne({ eventId: m.eventId }, formattedData);
+                totalUpdated++;
+              } else {
+                totalSkipped++;
+              }
+            }
           }
-
-          totalInserted += newMatches.length;
-          totalSkipped += existingIds.size;
 
         } catch (innerErr) {
           console.error(`Failed syncing sportId ${sportId} (inPlay=${isInPlay}):`, innerErr.message);
@@ -77,6 +80,7 @@ exports.syncAllMatches = async (req, res) => {
     return res.status(200).json({
       message: 'Sync completed',
       totalInserted,
+      totalUpdated,
       totalSkipped
     });
 
