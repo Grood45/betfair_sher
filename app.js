@@ -62,7 +62,7 @@ app.get('/', (req, res) => {
 
 app.post('/api/proxy-sports', async (req, res) => {
   try {
-    const { type, sportId,eventId } = req.body; // use body for POST
+    const { type, sportId,eventId,marketId } = req.body; // use body for POST
     let url = '';
     let method = 'get';
     let payload = null;
