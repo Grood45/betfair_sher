@@ -90,12 +90,34 @@ exports.getMarketListByEventId = async (req, res) => {
     }
 
     const syncResult = await syncMarketListByEventId(eventId);
-    const markets = await MarketList.find({ 'event.id': eventId });
+    // Step 2: Get only marketIds from DB
+    const marketDocs = await MarketList.find(
+      { 'event.id': eventId },
+      { marketId: 1, _id: 0 }
+    );
 
+    const marketIds = marketDocs.map(m => m.marketId).filter(Boolean);
+
+    if (marketIds.length === 0) {
+      return res.status(404).json({ message: 'No marketIds found after sync' });
+    }
+
+    // Step 3: Make external API call with all marketIds
+    const oddsResponse = await axios.get(
+      `https://apidiamond.online/sports/api/v1/macthodds/`,
+      {
+        params: {
+          ids: marketIds.join(',')
+        }
+      }
+    );
+
+    // Step 4: Return odds data + sync summary
     res.status(200).json({
-      message: 'Market list fetched successfully',
-      total: markets.length,
-      data: markets
+      message: 'Market synced and odds fetched successfully',
+      syncSummary: syncResult,
+      totalMarkets: marketIds.length,
+      oddsData: oddsResponse.data
     });
   } catch (err) {
     console.error('Error fetching market list:', err.message);
