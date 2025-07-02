@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Marketlimit = require('../models/Marketlimit');
 const MarketList = require('../models/Marketlist');
+const ExchangeOdds = require('../models/ExchangeOdds');
 
 exports.getAllLimits = async (req, res) => {
   try {
@@ -112,13 +113,46 @@ exports.getMarketListByEventId = async (req, res) => {
       }
     );
 
-    // Step 4: Return odds data + sync summary
+    const oddsList = oddsResponse.data?.data || [];
+
+    // Step 4: Store odds in DB
+    let inserted = 0, updated = 0;
+
+    for (const market of oddsList) {
+      const existing = await ExchangeOdds.findOne({ MarketId: market.MarketId });
+
+      await ExchangeOdds.findOneAndUpdate(
+        { MarketId: market.MarketId },
+        {
+          $set: {
+            MarketId: market.MarketId,
+            eventId: market.eventId,
+            marketName: market.marketName,
+            Status: market.Status,
+            IsInplay: market.IsInplay,
+            updateTime: market.updatetime,
+            sport: market.sport,
+            Runners: market.Runners
+          }
+        },
+        { new: true, upsert: true }
+      );
+
+      if (existing) updated++;
+      else inserted++;
+    }
+
+    // Step 5: Respond
     res.status(200).json({
-      message: 'Market synced and odds fetched successfully',
+      message: 'Synced, odds fetched and stored',
       syncSummary: syncResult,
-      totalMarkets: marketIds.length,
-      oddsData: oddsResponse.data
+      marketIds,
+      oddsStored: {
+        inserted,
+        updated
+      }
     });
+
   } catch (err) {
     console.error('Error fetching market list:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
