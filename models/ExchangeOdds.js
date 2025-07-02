@@ -32,6 +32,9 @@ const exchangeOddsSchema = new mongoose.Schema({
   IsInplay: Boolean,
   updateTime: String,
   sport: String,
+  NumberOfRunners: Number,
+  NumberOfActiveRunners: Number,
+  TotalMatched: Number,
   Runners: [runnerSchema]
 }, { timestamps: true });
 

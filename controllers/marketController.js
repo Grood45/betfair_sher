@@ -110,6 +110,9 @@ exports.syncMarketList = async (req, res) => {
             IsInplay: market.IsInplay,
             updateTime: market.updatetime,
             sport: market.sport,
+            NumberOfRunners: market.NumberOfRunners,
+            NumberOfActiveRunners: market.NumberOfActiveRunners,
+            TotalMatched: market.TotalMatched,
             Runners: market.Runners
           }
         },
