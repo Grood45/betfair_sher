@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const moment = require('moment-timezone');
+const mongoose = require('mongoose');
 
 const currentIST = moment().tz("Asia/Kolkata").toDate();
 
@@ -48,7 +49,11 @@ exports.getInplayMatches = async (req, res) => {
       filter.sportId = sportId;
     }
 
-    const matches = await Match.find(filter).sort({ event_date: 1 });
+      // Validate if it's a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(sportId)) {
+    return res.status(400).json({ message: 'Invalid sportId' });
+  }
+  const matches = await Match.find({ sportId });
 
     res.status(200).json({
       message: 'In-play matches fetched successfully',
