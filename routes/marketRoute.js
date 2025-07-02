@@ -4,8 +4,8 @@ const marketController = require('../controllers/marketController');
 
 router.get('/', marketController.getAllLimits); // GET all
 router.post('/', marketController.createOrUpdateLimit); // ADD or UPDATE
-router.get('/list/sync/:eventId', marketController.syncMarketList); // ADD or UPDATE
-router.get('/list/event/:eventId', marketController.getMarketListByEventId);
+router.get('/list/getExchangeOddsByEventId/:eventId', marketController.getExchangeOddsByEventId); // ADD or UPDATE
+router.get('/list/sync/exchangeodds/:eventId', marketController.syncMarketList);
 
 
 module.exports = router;

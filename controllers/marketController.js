@@ -34,55 +34,33 @@ exports.createOrUpdateLimit = async (req, res) => {
 };
 
 
-exports.syncMarketList = async (req, res) => {
+exports.getExchangeOddsByEventId = async (req, res) => {
   try {
     const { eventId } = req.params;
 
     if (!eventId) {
-      return res.status(400).json({ message: 'Missing eventId in query params' });
+      return res.status(400).json({ message: 'Missing eventId in params' });
     }
 
-    // Make POST request with eventId in body
-    const response = await axios.post(
-      'https://apidiamond.online/sports/api/market-list',
-      { eventId }  // sending eventId in POST body
-    );
+    const odds = await ExchangeOdds.find({ eventId });
 
-    const marketDataArray = response.data?.data;
-
-    if (!Array.isArray(marketDataArray)) {
-      return res.status(400).json({ message: 'Invalid market data received' });
-    }
-
-    let inserted = 0;
-    let updated = 0;
-
-    for (const market of marketDataArray) {
-      const existing = await MarketList.findOne({ marketId: market.marketId });
-
-      await MarketList.findOneAndUpdate(
-        { marketId: market.marketId },
-        { $set: market },
-        { new: true, upsert: true }
-      );
-
-      if (existing) updated++;
-      else inserted++;
+    if (!odds.length) {
+      return res.status(404).json({ message: 'No exchange odds found for this eventId' });
     }
 
     res.status(200).json({
-      message: 'Market sync completed',
-      inserted,
-      updated
+      message: 'Exchange odds fetched successfully',
+      total: odds.length,
+      data: odds
     });
 
   } catch (err) {
-    console.error('Error syncing markets:', err.message);
+    console.error('Error fetching exchange odds:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-exports.getMarketListByEventId = async (req, res) => {
+exports.syncMarketList = async (req, res) => {
   try {
     const { eventId } = req.params;
 
