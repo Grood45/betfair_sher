@@ -89,6 +89,7 @@ exports.getMarketListByEventId = async (req, res) => {
       return res.status(400).json({ message: 'Missing eventId in params' });
     }
 
+    const syncResult = await syncMarketListByEventId(eventId);
     const markets = await MarketList.find({ 'event.id': eventId });
 
     res.status(200).json({
@@ -101,3 +102,41 @@ exports.getMarketListByEventId = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+
+const syncMarketListByEventId = async (eventId) => {
+  if (!eventId) {
+    throw new Error('Missing eventId');
+  }
+
+  // Call external API
+  const response = await axios.post(
+    'https://apidiamond.online/sports/api/market-list',
+    { eventId }
+  );
+
+  const marketDataArray = response.data?.data;
+
+  if (!Array.isArray(marketDataArray)) {
+    throw new Error('Invalid market data received');
+  }
+
+  let inserted = 0;
+  let updated = 0;
+
+  for (const market of marketDataArray) {
+    const existing = await MarketList.findOne({ marketId: market.marketId });
+
+    await MarketList.findOneAndUpdate(
+      { marketId: market.marketId },
+      { $set: market },
+      { new: true, upsert: true }
+    );
+
+    if (existing) updated++;
+    else inserted++;
+  }
+
+  return { inserted, updated };
+};
+
