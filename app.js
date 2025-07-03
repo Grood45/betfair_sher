@@ -82,7 +82,7 @@ app.post('/api/proxy-sports', async (req, res) => {
 
             case 'fancy':
               if (!eventId) return res.status(400).json({ error: 'eventId is required for fancy' });
-              url = `https://apidiamond.online/sports/api/v1/exchange/v1/player-operations/fancy/event/details/${eventId}`;
+              url = `https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`;
               break;
 
               case 'oddBymarketId':
