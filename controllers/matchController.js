@@ -173,7 +173,7 @@ exports.getEventSummary = async (req, res) => {
     const allEvents = await Match.countDocuments();
 
     const liveEvents = await Match.countDocuments({
-      event_date: { $lte: currentISTTime }
+      time: { $lte: currentISTTime }
     }); 
 
     const upcomingEvents = allEvents - liveEvents;

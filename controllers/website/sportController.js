@@ -38,7 +38,7 @@ exports.getInplayMatches = async (req, res) => {
 
     // Build filter based on IST time
     const filter = {
-      event_date: { $lte: currentIST }
+      time: { $lte: currentIST }
     };
 
     if (sportName) {
