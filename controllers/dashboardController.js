@@ -22,9 +22,9 @@ exports.getDashboardStats = async (req, res) => {
 
     const [allSports, inPlayCount, todayMatches, tomorrowMatches] = await Promise.all([
       Sport.countDocuments(),
-      Match.countDocuments({ event_date: { $lte: currentISTTime } }),  // LIVE Matches
-      Match.countDocuments({ event_date: { $gte: todayStart, $lte: todayEnd } }),
-      Match.countDocuments({ event_date: { $gte: tomorrowStart, $lte: tomorrowEnd } })
+      Match.countDocuments({ time: { $lte: currentISTTime } }),  // LIVE Matches
+      Match.countDocuments({ time: { $gte: todayStart, $lte: todayEnd } }),
+      Match.countDocuments({ time: { $gte: tomorrowStart, $lte: tomorrowEnd } })
     ]);
 
     res.status(200).json({
