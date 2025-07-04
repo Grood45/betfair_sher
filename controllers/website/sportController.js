@@ -67,3 +67,75 @@ exports.getInplayMatches = async (req, res) => {
   }
 };
 
+exports.getInplayFancy = async (req, res) => {
+  try {
+    const { sportName, sportId } = req.params;
+
+
+    // Build filter based on IST time
+    const filter = {
+      time: { $lte: currentIST }
+    };
+
+    if (sportName) {
+      filter.sport_name = sportName;
+    }
+
+    if (sportId) {
+      filter.sportId = sportId;
+    }
+
+      // Validate if it's a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(sportId)) {
+    return res.status(400).json({ message: 'Invalid sportId' });
+  }
+  const matches = await Match.find({ sportId });
+
+    res.status(200).json({
+      message: 'In-play matches fetched successfully',
+      count: matches.length,
+      data: matches
+    });
+
+  } catch (err) {
+    console.error('Error fetching in-play matches:', err);
+    res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
+  }
+};
+
+exports.getInplayPremium = async (req, res) => {
+  try {
+    const { sportName, sportId } = req.params;
+
+
+    // Build filter based on IST time
+    const filter = {
+      time: { $lte: currentIST }
+    };
+
+    if (sportName) {
+      filter.sport_name = sportName;
+    }
+
+    if (sportId) {
+      filter.sportId = sportId;
+    }
+
+      // Validate if it's a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(sportId)) {
+    return res.status(400).json({ message: 'Invalid sportId' });
+  }
+  const matches = await Match.find({ sportId });
+
+    res.status(200).json({
+      message: 'In-play matches fetched successfully',
+      count: matches.length,
+      data: matches
+    });
+
+  } catch (err) {
+    console.error('Error fetching in-play matches:', err);
+    res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
+  }
+};
+

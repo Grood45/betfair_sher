@@ -6,6 +6,8 @@ const path = require('path');
 
 router.get('/sport/list', sportController.getAllSportNames);
 router.get('/sport/inplay/:sportId', sportController.getInplayMatches);
+router.get('/sport/fancy/:sportId', sportController.getInplayFancy);
+router.get('/sport/premium/:sportId', sportController.getInplayPremium);
 
 
 module.exports = router;
