@@ -9,7 +9,7 @@ router.get('/sport/list', sportController.getAllSportNames);
 router.get('/sport/inplay/:sportId', sportController.getInplayMatches);
 router.get('/sport/fancy/:sportId', sportController.getInplayFancy);
 router.get('/sport/premium/:eventId', matchController.getPremiumEventByEventId);
-router.get('/sport/sync/premium/:sportId', matchController.syncPremiumEvent);
+router.get('/sport/sync/premium/:sportId/:eventId', matchController.syncPremiumEvent);
 
 
 module.exports = router;
