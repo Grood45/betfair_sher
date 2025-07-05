@@ -48,7 +48,6 @@ exports.syncAllMatches = async (req, res) => {
             const formattedData = {
               ...m,
               eventId: m.eventId,                          // primary key
-              betfair_event_id: m.eventId,
               sport_id: sportId,                            // from API
               sportId: sport._id,                           // ref to Sport model
               is_in_play: isInPlay.toString()               // store as string (optional)

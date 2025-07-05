@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Sport = require('../../models/Sport');
 const Match = require('../../models/Match');
+const PremiumEvent = require('../../models/PremiumEvent');
 
 const fs = require('fs');
 const path = require('path');
