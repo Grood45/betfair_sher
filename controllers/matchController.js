@@ -8,6 +8,8 @@ const path = require('path');
 const axios = require('axios');
 const moment = require('moment-timezone');
 const deepEqual = require('fast-deep-equal');
+const PremiumEvent = require('../models/PremiumEvent');
+
 // Get current time in IST
 const currentISTTime = moment().tz("Asia/Kolkata").toDate();
 
@@ -247,6 +249,73 @@ console.log(sportId);
     });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
+  }
+};
+
+
+exports.syncPremiumEvent = async (req, res) => {
+  try {
+    const { sportId, eventId } = req.params;
+
+    if (!sportId || !eventId) {
+      return res.status(400).json({ message: 'sportId and eventId are required' });
+    }
+
+    // 1️⃣ Send POST request as JSON payload (not form-data)
+    const { data } = await axios.post(
+      'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
+      { sportId, eventId }, // JSON body
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    // 2️⃣ Validate API response
+    if (!data || data.errorCode !== 0 || !data.eventId) {
+      return res.status(400).json({ message: 'Invalid or missing data from external API', data });
+    }
+
+    // 3️⃣ Upsert into MongoDB
+    const result = await PremiumEvent.findOneAndUpdate(
+      { eventId: data.eventId },
+      { $set: data },
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      message: result.createdAt?.getTime() === result.updatedAt?.getTime()
+        ? 'Inserted new premium event'
+        : 'Updated existing premium event',
+      _id: result._id,
+      eventId: result.eventId
+    });
+
+  } catch (err) {
+    console.error('Premium sync error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.getPremiumEventByEventId = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({ message: 'eventId is required' });
+    }
+
+    const event = await PremiumEvent.findOne({ eventId });
+
+    if (!event) {
+      return res.status(404).json({ message: 'Premium event not found' });
+    }
+
+    res.status(200).json({
+      message: 'Premium event found',
+      data: event
+    });
+
+  } catch (error) {
+    console.error('Error fetching premium event:', error.message);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
