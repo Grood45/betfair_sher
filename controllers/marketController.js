@@ -2,6 +2,7 @@ const axios = require('axios');
 const Marketlimit = require('../models/Marketlimit');
 const MarketList = require('../models/Marketlist');
 const ExchangeOdds = require('../models/ExchangeOdds');
+const BookmakerMarket = require('../models/BookmakerMarket');
 
 exports.getAllLimits = async (req, res) => {
   try {
@@ -175,5 +176,67 @@ const syncMarketListByEventId = async (eventId) => {
   }
 
   return { inserted, updated };
+};
+
+
+exports.syncBookmakerMarkets = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({ message: 'eventId is required in URL params' });
+    }
+
+    const { data } = await axios.get(`https://apidiamond.online/sports/api/v1/bookmaker/${eventId}`);
+
+    if (!data || data.status !== 'OK' || !Array.isArray(data.data)) {
+      return res.status(400).json({ message: 'Invalid API response', raw: data });
+    }
+
+    let inserted = 0;
+    let updated = 0;
+
+    for (const entry of data.data) {
+      const categoryDetails = entry.categoryDetails;
+      const markets = entry.markets;
+
+      for (const market of markets) {
+        const filter = { eventId, marketId: market.marketId };
+
+        const updateDoc = {
+          eventId,
+          marketId: market.marketId,
+          eventName: market.eventName,
+          competitionId: market.competitionId || '',
+          competitionName: market.competitionName || '',
+          market,
+          categoryDetails,
+          feedTimestamp: new Date()
+        };
+
+        const existing = await BookmakerMarket.findOne(filter);
+
+        const result = await BookmakerMarket.findOneAndUpdate(
+          filter,
+          { $set: updateDoc },
+          { new: true, upsert: true }
+        );
+
+        if (existing) updated++;
+        else inserted++;
+      }
+    }
+
+    res.status(200).json({
+      message: 'Bookmaker markets sync completed',
+      eventId,
+      inserted,
+      updated
+    });
+
+  } catch (err) {
+    console.error('Bookmaker sync error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 };
 

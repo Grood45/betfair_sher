@@ -7,5 +7,6 @@ router.post('/', marketController.createOrUpdateLimit); // ADD or UPDATE
 router.get('/list/getExchangeOddsByEventId/:eventId', marketController.getExchangeOddsByEventId); // ADD or UPDATE
 router.get('/list/sync/exchangeodds/:eventId', marketController.syncMarketList);
 
+router.get('/sync-bookmaker/:eventId', marketController.syncBookmakerMarkets);
 
 module.exports = router;
