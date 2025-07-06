@@ -29,8 +29,8 @@ exports.syncAllMatches = async (req, res) => {
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
 
-      for (const isInPlay of [1, 0]) {
-        const url = `https://apidiamond.online/sports/api/v1/listGames/${sportId}/${isInPlay}`;
+      // for (const isInPlay of [1, 0]) {
+        const url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
 
         try {
           const response = await axios.get(url);
@@ -75,7 +75,7 @@ exports.syncAllMatches = async (req, res) => {
           console.error(`Failed syncing sportId ${sportId} (inPlay=${isInPlay}):`, innerErr.message);
           continue;
         }
-      }
+      // }
     }
 
     return res.status(200).json({
