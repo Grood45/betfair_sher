@@ -85,6 +85,11 @@ app.post('/api/proxy-sports', async (req, res) => {
               url = `https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`;
               break;
 
+              case 'bookmaker':
+                if (!eventId) return res.status(400).json({ error: 'eventId is required for fancy' });
+                url = `https://apidiamond.online/sports/api/v1/exchange/v1/player-operations/fancy/event/details${eventId}`;
+                break;
+
               case 'oddBymarketId':
                 if (!marketId) return res.status(400).json({ error: 'marketId is required for odds' });
                 url = `https://apidiamond.online/sports/api/v1/macthodds/?ids=${marketId}`;
@@ -96,7 +101,7 @@ app.post('/api/proxy-sports', async (req, res) => {
                 payload = {eventId:eventId,sportId:sportId}; // send empty body or required body if needed
                 break;
 
-            case 'premium':
+            case 'premiumResult':
               url = 'https://apidiamond.online/sports/api/v2/result-sport-data';
               method = 'post';
               payload = {eventId:eventId}; // send empty body or required body if needed
@@ -114,10 +119,6 @@ app.post('/api/proxy-sports', async (req, res) => {
         break;
 
 
-      case 'byeventid':
-        if (!sportId) return res.status(400).json({ error: 'sportId is required for events' });
-        url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
-        break;
 
       case 'upcoming':
         if (!sportId) return res.status(400).json({ error: 'sportId is required for upcoming' });
