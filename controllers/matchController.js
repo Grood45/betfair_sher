@@ -258,43 +258,69 @@ console.log(sportId);
 };
 
 
-exports.syncPremiumEvent = async (req, res) => {
+exports.syncAllPremiumEvents = async (_req, res) => {
   try {
-    const { sportId, eventId } = req.params;
-
-    if (!sportId || !eventId) {
-      return res.status(400).json({ message: 'sportId and eventId are required' });
-    }
-
-    // 1️⃣ Send POST request as JSON payload (not form-data)
-    const { data } = await axios.post(
-      'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
-      { sportId, eventId }, // JSON body
-      { headers: { 'Content-Type': 'application/json' } }
+    // 1️⃣  fetch every match that has an eventId + external sport_id
+    const matches = await Match.find(
+      { eventId: { $ne: null }, sport_id: { $ne: null } },
+      { eventId: 1, sport_id: 1 }
     );
 
-    // 2️⃣ Validate API response
-    if (!data || data.errorCode !== 0 || !data.eventId) {
-      return res.status(400).json({ message: 'Invalid or missing data from external API', data });
+    if (!matches.length) {
+      return res.status(404).json({ message: 'No matches with eventId + sport_id found' });
     }
 
-    // 3️⃣ Upsert into MongoDB
-    const result = await PremiumEvent.findOneAndUpdate(
-      { eventId: data.eventId },
-      { $set: data },
-      { new: true, upsert: true }
+    let inserted = 0;
+    let updated  = 0;
+    let skipped  = 0;
+    let failed   = 0;
+
+    // 2️⃣  build an array of limited‑concurrency promises
+    const tasks = matches.map(({ eventId, sport_id }) =>
+      limit(async () => {
+        try {
+          // call external feed (JSON body, not form‑data)
+          const { data } = await axios.post(
+            'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
+            { sport_id, eventId },
+            { headers: { 'Content-Type': 'application/json' } }
+          );
+
+          if (!data || data.errorCode !== 0 || !data.eventId) {
+            skipped++;
+            return;
+          }
+
+          const result = await PremiumEvent.findOneAndUpdate(
+            { eventId: data.eventId },
+            { $set: data },
+            { new: true, upsert: true }
+          );
+
+          // Identify whether it was insert or update
+          if (result.createdAt.getTime() === result.updatedAt.getTime()) inserted++;
+          else updated++;
+        } catch (err) {
+          failed++;
+          console.error(`Feed sync failed (event ${eventId}):`, err.message);
+        }
+      })
     );
 
+    // 3️⃣  wait for all promises
+    await Promise.all(tasks);
+
+    // 4️⃣  respond summary
     res.status(200).json({
-      message: result.createdAt?.getTime() === result.updatedAt?.getTime()
-        ? 'Inserted new premium event'
-        : 'Updated existing premium event',
-      _id: result._id,
-      eventId: result.eventId
+      message: 'Bulk premium sync completed',
+      inserted,
+      updated,
+      skipped,
+      failed
     });
 
   } catch (err) {
-    console.error('Premium sync error:', err.message);
+    console.error('Bulk premium sync error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
