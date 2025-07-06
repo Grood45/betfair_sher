@@ -236,7 +236,7 @@ exports.syncBookmakerMarkets = async (req, res) => {
 
   } catch (err) {
     console.error('Bookmaker sync error:', err.message);
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error', error: err });
   }
 };
 
