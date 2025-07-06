@@ -34,10 +34,10 @@ exports.syncAllMatches = async (req, res) => {
 
         try {
           const response = await axios.get(url);
-          const matches = response.data?.result || response.data?.data;
+          const matches = response.data?.sports || response.data?.result;
 
           if (!Array.isArray(matches)) {
-            console.warn(`Invalid match data for sportId ${sportId}, inPlay=${isInPlay}`);
+            console.warn(`Invalid match data for sportId ${sportId}`);
             console.log('Raw response:', response.data);
             continue;
           }
@@ -52,7 +52,6 @@ exports.syncAllMatches = async (req, res) => {
               eventId: m.eventId,                          // primary key
               sport_id: sportId,                            // from API
               sportId: sport._id,                           // ref to Sport model
-              is_in_play: isInPlay.toString()               // store as string (optional)
             };
 
             if (!existing) {
@@ -72,7 +71,7 @@ exports.syncAllMatches = async (req, res) => {
           }
 
         } catch (innerErr) {
-          console.error(`Failed syncing sportId ${sportId} (inPlay=${isInPlay}):`, innerErr.message);
+          console.error(`Failed syncing sportId ${sportId} :`, innerErr.message);
           continue;
         }
       // }
