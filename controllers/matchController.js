@@ -258,72 +258,65 @@ console.log(sportId);
 };
 
 
-exports.syncAllPremiumEvents = async (_req, res) => {
+exports.syncAllPremiumEvents = async (req, res) => {
   try {
-    // 1️⃣  fetch every match that has an eventId + external sport_id
-    const matches = await Match.find(
-      { eventId: { $ne: null }, sport_id: { $ne: null } },
-      { eventId: 1, sport_id: 1 }
-    );
+    // Get all events from the Match collection
+    const matches = await Match.find({ eventId: { $ne: null } }).select('eventId sport_id');
 
     if (!matches.length) {
-      return res.status(404).json({ message: 'No matches with eventId + sport_id found' });
+      return res.status(404).json({ message: 'No matches found with eventId' });
     }
 
-    let inserted = 0;
-    let updated  = 0;
-    let skipped  = 0;
-    let failed   = 0;
+    let totalInserted = 0;
+    let totalUpdated = 0;
+    let totalFailed = 0;
 
-    // 2️⃣  build an array of limited‑concurrency promises
-    const tasks = matches.map(({ eventId, sport_id }) =>
-      limit(async () => {
-        try {
-          // call external feed (JSON body, not form‑data)
-          const { data } = await axios.post(
-            'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
-            { sport_id, eventId },
-            { headers: { 'Content-Type': 'application/json' } }
-          );
+    for (const match of matches) {
+      const { sport_id, eventId } = match;
 
-          if (!data || data.errorCode !== 0 || !data.eventId) {
-            skipped++;
-            return;
-          }
+      try {
+        const { data } = await axios.post(
+          'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
+          { sport_id, eventId },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
 
-          const result = await PremiumEvent.findOneAndUpdate(
-            { eventId: data.eventId },
-            { $set: data },
-            { new: true, upsert: true }
-          );
-
-          // Identify whether it was insert or update
-          if (result.createdAt.getTime() === result.updatedAt.getTime()) inserted++;
-          else updated++;
-        } catch (err) {
-          failed++;
-          console.error(`Feed sync failed (event ${eventId}):`, err.message);
+        if (!data || data.errorCode !== 0 || !data.eventId) {
+          totalFailed++;
+          continue;
         }
-      })
-    );
 
-    // 3️⃣  wait for all promises
-    await Promise.all(tasks);
+        const result = await PremiumEvent.findOneAndUpdate(
+          { eventId: data.eventId },
+          { $set: data },
+          { new: true, upsert: true }
+        );
 
-    // 4️⃣  respond summary
-    res.status(200).json({
-      message: 'Bulk premium sync completed',
-      inserted,
-      updated,
-      skipped,
-      failed
+        if (result.createdAt?.getTime() === result.updatedAt?.getTime()) {
+          totalInserted++;
+        } else {
+          totalUpdated++;
+        }
+
+      } catch (err) {
+        console.error(`Failed syncing eventId ${eventId}:`, err.message);
+        totalFailed++;
+      }
+    }
+
+    return res.status(200).json({
+      message: 'Premium event sync completed',
+      totalInserted,
+      totalUpdated,
+      totalFailed
     });
 
   } catch (err) {
-    console.error('Bulk premium sync error:', err.message);
+    console.error('Sync error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 exports.getPremiumEventByEventId = async (req, res) => {
   try {
