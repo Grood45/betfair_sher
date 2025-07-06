@@ -16,68 +16,77 @@ const currentISTTime = moment().tz("Asia/Kolkata").toDate();
 
 exports.syncAllMatches = async (req, res) => {
   try {
-    const sports = await Sport.find({ betfairEventTypeId: { $ne: null } }).select('_id betfairEventTypeId');
+    const sports = await Sport.find({ betfairEventTypeId: { $ne: null } })
+                              .select('_id betfairEventTypeId');
 
-    if (!sports || sports.length === 0) {
-      return res.status(404).json({ message: 'No sports found with betfairEventTypeId' });
+    if (!sports.length) {
+      return res.status(404).json({ message: 'No sports with betfairEventTypeId' });
     }
 
     let totalInserted = 0;
-    let totalUpdated = 0;
-    let totalSkipped = 0;
+    let totalUpdated  = 0;
+    let totalSkipped  = 0;
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
+      const url     = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
 
-      // for (const isInPlay of [1, 0]) {
-        const url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
+      try {
+        const { data } = await axios.get(url);
+        const events   = data?.sports || data?.result;
 
-        try {
-          const response = await axios.get(url);
-          const matches = response.data?.sports || response.data?.result;
-
-          if (!Array.isArray(matches)) {
-            console.warn(`Invalid match data for sportId ${sportId}`);
-            console.log('Raw response:', response.data);
-            continue;
-          }
-
-          for (const m of matches) {
-            if (!m.eventId) continue;
-
-            const existing = await Match.findOne({ eventId: m.eventId });
-
-            const formattedData = {
-              ...m,
-              eventId: m.eventId,                          // primary key
-              sport_id: sportId,                            // from API
-              sportId: sport._id,                           // ref to Sport model
-            };
-
-            if (!existing) {
-              await Match.create(formattedData);
-              totalInserted++;
-            } else {
-              const mClean = JSON.parse(JSON.stringify(formattedData));
-              const existingClean = JSON.parse(JSON.stringify(existing.toObject()));
-
-              if (!deepEqual(existingClean, mClean)) {
-                await Match.updateOne({ eventId: m.eventId }, formattedData);
-                totalUpdated++;
-              } else {
-                totalSkipped++;
-              }
-            }
-          }
-
-        } catch (innerErr) {
-          console.error(`Failed syncing sportId ${sportId} :`, innerErr.message);
+        if (!Array.isArray(events)) {
+          console.warn(`Invalid data for sportId ${sportId}`);   // continue next sport
           continue;
         }
-      // }
+
+        /* ------------ build bulk operations ------------ */
+        const bulkOps = [];
+
+        for (const ev of events) {
+          const eventId = ev.event_id || ev.eventId;
+          if (!eventId) continue;                                // skip if no ID
+
+          // Attach your extra fields
+          const doc = {
+            ...ev,
+            eventId:             eventId,
+            sport_id:            sportId,   // external code
+            sportId:             sport._id, // Mongo ref
+            betfair_event_id:    ev.betfair_event_id || eventId
+          };
+
+          bulkOps.push({
+            updateOne: {
+              filter: { eventId },
+              /** check for changes to avoid unnecessary writes */
+              update: [
+                {
+                  $set: doc
+                }
+              ],
+              upsert: true
+            }
+          });
+        }
+
+        /* ------------ execute bulkWrite ------------ */
+        if (bulkOps.length) {
+          const result = await Match.bulkWrite(bulkOps, { ordered: false });
+
+          totalInserted += (result.upsertedCount || 0);
+          totalUpdated  += (result.modifiedCount  || 0);
+          // skipped = attempted - (inserted+updated)
+          totalSkipped  += bulkOps.length - (result.upsertedCount + result.modifiedCount);
+        }
+
+      } catch (err) {
+        console.error(`Sync error sportId ${sportId} :`, err.message);
+        continue; // proceed with next sport
+      }
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Sync completed',
       totalInserted,
       totalUpdated,
@@ -85,11 +94,8 @@ exports.syncAllMatches = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Sync error:', err.message);
-    res.status(500).json({
-      message: 'Failed to sync matches for all sports',
-      error: err.message
-    });
+    console.error('Global sync error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
