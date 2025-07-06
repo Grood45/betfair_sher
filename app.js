@@ -113,6 +113,12 @@ app.post('/api/proxy-sports', async (req, res) => {
         url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/true`;
         break;
 
+
+      case 'byeventid':
+        if (!sportId) return res.status(400).json({ error: 'sportId is required for events' });
+        url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
+        break;
+
       case 'upcoming':
         if (!sportId) return res.status(400).json({ error: 'sportId is required for upcoming' });
         url = `https://apidiamond.online/sports/api/final-sport-list/${sportId}/false`;
