@@ -187,7 +187,7 @@ exports.syncBookmakerMarkets = async (req, res) => {
       return res.status(400).json({ message: 'eventId is required in URL params' });
     }
 
-    const { data } = await axios.get(`https://apidiamond.online/sports/api/v1/bookmaker/${eventId}`);
+    const { data } = await axios.get(`https://apidiamond.online/sports/api/v1/exchange/v1/player-operations/fancy/event/details/${eventId}`);
 
     if (!data || data.status !== 'OK' || !Array.isArray(data.data)) {
       return res.status(400).json({ message: 'Invalid API response', raw: data });
