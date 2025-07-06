@@ -258,65 +258,46 @@ console.log(sportId);
 };
 
 
-exports.syncAllPremiumEvents = async (req, res) => {
+exports.syncPremiumEvent = async (req, res) => {
   try {
-    // Get all events from the Match collection
-    const matches = await Match.find({ eventId: { $ne: null } }).select('eventId sport_id');
+    const { sportId, eventId } = req.params;
 
-    if (!matches.length) {
-      return res.status(404).json({ message: 'No matches found with eventId' });
+    if (!sportId || !eventId) {
+      return res.status(400).json({ message: 'sportId and eventId are required' });
     }
 
-    let totalInserted = 0;
-    let totalUpdated = 0;
-    let totalFailed = 0;
+    // 1️⃣ Send POST request as JSON payload (not form-data)
+    const { data } = await axios.post(
+      'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
+      { sportId, eventId }, // JSON body
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
-    for (const match of matches) {
-      const { sport_id, eventId } = match;
-
-      try {
-        const { data } = await axios.post(
-          'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
-          { sport_id, eventId },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-
-        if (!data || data.errorCode !== 0 || !data.eventId) {
-          totalFailed++;
-          continue;
-        }
-
-        const result = await PremiumEvent.findOneAndUpdate(
-          { eventId: data.eventId },
-          { $set: data },
-          { new: true, upsert: true }
-        );
-
-        if (result.createdAt?.getTime() === result.updatedAt?.getTime()) {
-          totalInserted++;
-        } else {
-          totalUpdated++;
-        }
-
-      } catch (err) {
-        console.error(`Failed syncing eventId ${eventId}:`, err.message);
-        totalFailed++;
-      }
+    // 2️⃣ Validate API response
+    if (!data || data.errorCode !== 0 || !data.eventId) {
+      return res.status(400).json({ message: 'Invalid or missing data from external API', data });
     }
 
-    return res.status(200).json({
-      message: 'Premium event sync completed',
-      totalInserted,
-      totalUpdated,
-      totalFailed
+    // 3️⃣ Upsert into MongoDB
+    const result = await PremiumEvent.findOneAndUpdate(
+      { eventId: data.eventId },
+      { $set: data },
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      message: result.createdAt?.getTime() === result.updatedAt?.getTime()
+        ? 'Inserted new premium event'
+        : 'Updated existing premium event',
+      _id: result._id,
+      eventId: result.eventId
     });
 
   } catch (err) {
-    console.error('Sync error:', err.message);
+    console.error('Premium sync error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
 
 exports.getPremiumEventByEventId = async (req, res) => {
   try {
