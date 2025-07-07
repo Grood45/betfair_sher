@@ -45,35 +45,32 @@ exports.getExchangeOddsByEventId = async (req, res) => {
     }
 
     /* -----------------------------------------------------------
-     * Fetch both collections in parallel.
+     * Fetch exchange odds and the snapshot in parallel
      * -----------------------------------------------------------
      */
-    const [exchangeOdds, bookmakerMarkets] = await Promise.all([
+    const [odds, fancySnapshot] = await Promise.all([
       ExchangeOdds.find({ eventId }),
-      BookmakerMarket.find({ eventId })
+      Fancymarket.findOne({ eventId })          // one document per event
     ]);
 
-    if (!exchangeOdds.length && !bookmakerMarkets.length) {
-      return res.status(404).json({ message: 'No data found for this eventId' });
+    if (!odds.length) {
+      return res
+        .status(404)
+        .json({ message: 'No exchange odds found for this eventId' });
     }
 
-    /* -----------------------------------------------------------
-     *  Build the payload.
-     *  – You can keep them in separate arrays (shown here), or
-     *    map bookmaker markets into each odds item if you prefer.
-     * -----------------------------------------------------------
-     */
+    /* safely extract bm1 array (empty if snapshot hasn’t arrived yet) */
+    const BMmarket = fancySnapshot?.BMmarket?.bm1 || [];
+
     res.status(200).json({
-      message          : 'Data fetched successfully',
-      totalExchangeOdds: exchangeOdds.length,
-      totalBookmakers  : bookmakerMarkets.length,
-      data             : {
-        exchangeOdds,
-        bookmakerMarkets
-      }
+      message: 'Exchange odds fetched successfully',
+      total  : odds.length,
+      MatchOdds   : odds,        // <‑‑ original key stays the same
+      BMmarket              // <‑‑ added just below `data`
     });
+
   } catch (err) {
-    console.error('Error fetching data:', err);
+    console.error('Error fetching exchange odds:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
