@@ -3,6 +3,7 @@ const Marketlimit = require('../models/Marketlimit');
 const MarketList = require('../models/Marketlist');
 const ExchangeOdds = require('../models/ExchangeOdds');
 const BookmakerMarket = require('../models/BookmakerMarket');
+const Fancymarket = require('../models/FancyMarket');
 
 exports.getAllLimits = async (req, res) => {
   try {
@@ -256,3 +257,63 @@ exports.syncBookmakerMarkets = async (req, res) => {
   }
 };
 
+exports.syncFancyMarkets = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({ message: 'eventId is required in URL params' });
+    }
+
+    const { data } = await axios.get(
+      `https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`
+    );
+
+    if (!data || data.status !== 'OK' || !data.data || !data.data.Fancymarket) {
+      return res.status(400).json({ message: 'Invalid API response structure', raw: data });
+    }
+
+    const fancymarkets = data.data.Fancymarket;
+    let inserted = 0;
+    let updated = 0;
+
+    for (const market of fancymarkets) {
+      const filter = {
+        'data.Fancymarket.sid': market.sid,
+        'data.vid': data.data.vid || eventId // fallback to eventId if vid is not in response
+      };
+
+      const updateDoc = {
+        status: data.status || "1",
+        data: {
+          vid: data.data.vid || eventId,
+          updatetime: new Date(),
+          update: data.data.update || 'ok',
+          Fancymarket: [market]
+        }
+      };
+
+      const existing = await Fancymarket.findOne(filter);
+
+      const result = await Fancymarket.findOneAndUpdate(
+        filter,
+        { $set: updateDoc },
+        { new: true, upsert: true }
+      );
+
+      if (existing) updated++;
+      else inserted++;
+    }
+
+    return res.status(200).json({
+      message: 'Fancy markets sync completed',
+      eventId,
+      inserted,
+      updated
+    });
+
+  } catch (err) {
+    console.error('Fancymarket sync error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
