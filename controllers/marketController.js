@@ -43,20 +43,36 @@ exports.getExchangeOddsByEventId = async (req, res) => {
       return res.status(400).json({ message: 'Missing eventId in params' });
     }
 
-    const odds = await ExchangeOdds.find({ eventId });
+    /* -----------------------------------------------------------
+     * Fetch both collections in parallel.
+     * -----------------------------------------------------------
+     */
+    const [exchangeOdds, bookmakerMarkets] = await Promise.all([
+      ExchangeOdds.find({ eventId }),
+      BookmakerMarket.find({ eventId })
+    ]);
 
-    if (!odds.length) {
-      return res.status(404).json({ message: 'No exchange odds found for this eventId' });
+    if (!exchangeOdds.length && !bookmakerMarkets.length) {
+      return res.status(404).json({ message: 'No data found for this eventId' });
     }
 
+    /* -----------------------------------------------------------
+     *  Build the payload.
+     *  – You can keep them in separate arrays (shown here), or
+     *    map bookmaker markets into each odds item if you prefer.
+     * -----------------------------------------------------------
+     */
     res.status(200).json({
-      message: 'Exchange odds fetched successfully',
-      total: odds.length,
-      data: odds
+      message          : 'Data fetched successfully',
+      totalExchangeOdds: exchangeOdds.length,
+      totalBookmakers  : bookmakerMarkets.length,
+      data             : {
+        exchangeOdds,
+        bookmakerMarkets
+      }
     });
-
   } catch (err) {
-    console.error('Error fetching exchange odds:', err.message);
+    console.error('Error fetching data:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

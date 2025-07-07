@@ -26,6 +26,7 @@ const subMarketSchema = new mongoose.Schema({
   marketType:   String,
   minStake:     Number,
   maxStake:     Number,
+  fancyCategory: String,
   runners:      [runnerSchema],
   limits:       limitSchema,
   fancy:        Boolean,
