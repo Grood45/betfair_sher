@@ -260,49 +260,46 @@ exports.syncBookmakerMarkets = async (req, res) => {
 exports.syncBmFancyMarkets = async (req, res) => {
   try {
     const { eventId } = req.params;
-
     if (!eventId) {
       return res.status(400).json({ message: 'eventId is required in URL params' });
     }
 
-    const response = await axios.get(`https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`);
+    const { data: apiData } = await axios.get(
+      `https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`
+    );
 
-    const apiData = response.data;
-
-    // Validate structure
-    if (
-      !apiData ||
-      typeof apiData !== 'object' ||
-      !apiData.status ||
-      !apiData.data ||
-      typeof apiData.data !== 'object'
-    ) {
+    /* validate */
+    if (!apiData || typeof apiData !== 'object' || !apiData.status || !apiData.data) {
       return res.status(400).json({ message: 'Invalid API response structure', raw: apiData });
     }
 
-    const { vid, updatetime, update, BMmarket, Fancymarket: fancyArray } = apiData.data;
+    const {
+      vid        = eventId,
+      updatetime = Date.now(),
+      update     = '',
+      BMmarket   = { bm1: [] },
+      Fancymarket: fancyArr = []
+    } = apiData.data;
 
-    const updateDoc = {
+    const doc = {
       status: apiData.status,
-      data: {
-        vid: vid || eventId,
-        updatetime: new Date(updatetime || Date.now()),
-        update: update || '',
-        BMmarket: BMmarket || { bm1: [] },
-        Fancymarket: fancyArray || []
-      }
+      eventId,
+      vid,
+      updatetime: new Date(updatetime),
+      update,
+      BMmarket,
+      Fancymarket: fancyArr
     };
 
     const result = await Fancymarket.findOneAndUpdate(
-      { 'data.vid': vid || eventId },
-      { $set: updateDoc },
+      { eventId },
+      { $set: doc },
       { new: true, upsert: true }
     );
 
     res.status(200).json({
-      message: 'BM & Fancy markets sync completed',
+      message: 'BM & Fancy markets synced (flattened)',
       eventId,
-      insertedOrUpdated: true,
       documentId: result._id
     });
 
