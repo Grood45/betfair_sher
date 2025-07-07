@@ -257,7 +257,7 @@ exports.syncBookmakerMarkets = async (req, res) => {
   }
 };
 
-exports.syncFancyMarkets = async (req, res) => {
+exports.syncBmFancyMarkets = async (req, res) => {
   try {
     const { eventId } = req.params;
 
@@ -265,55 +265,49 @@ exports.syncFancyMarkets = async (req, res) => {
       return res.status(400).json({ message: 'eventId is required in URL params' });
     }
 
-    const { data } = await axios.get(
-      `https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`
+    const response = await axios.get(`https://apidiamond.online/sports/api/v1/bm_fancy/${eventId}/1`);
+
+    const apiData = response.data;
+
+    // Validate structure
+    if (
+      !apiData ||
+      typeof apiData !== 'object' ||
+      !apiData.status ||
+      !apiData.data ||
+      typeof apiData.data !== 'object'
+    ) {
+      return res.status(400).json({ message: 'Invalid API response structure', raw: apiData });
+    }
+
+    const { vid, updatetime, update, BMmarket, Fancymarket: fancyArray } = apiData.data;
+
+    const updateDoc = {
+      status: apiData.status,
+      data: {
+        vid: vid || eventId,
+        updatetime: new Date(updatetime || Date.now()),
+        update: update || '',
+        BMmarket: BMmarket || { bm1: [] },
+        Fancymarket: fancyArray || []
+      }
+    };
+
+    const result = await Fancymarket.findOneAndUpdate(
+      { 'data.vid': vid || eventId },
+      { $set: updateDoc },
+      { new: true, upsert: true }
     );
 
-    if (!data || data.status !== 'OK' || !data.data || !data.data.Fancymarket) {
-      return res.status(400).json({ message: 'Invalid API response structure', raw: data });
-    }
-
-    const fancymarkets = data.data.Fancymarket;
-    let inserted = 0;
-    let updated = 0;
-
-    for (const market of fancymarkets) {
-      const filter = {
-        'data.Fancymarket.sid': market.sid,
-        'data.vid': data.data.vid || eventId // fallback to eventId if vid is not in response
-      };
-
-      const updateDoc = {
-        status: data.status || "1",
-        data: {
-          vid: data.data.vid || eventId,
-          updatetime: new Date(),
-          update: data.data.update || 'ok',
-          Fancymarket: [market]
-        }
-      };
-
-      const existing = await Fancymarket.findOne(filter);
-
-      const result = await Fancymarket.findOneAndUpdate(
-        filter,
-        { $set: updateDoc },
-        { new: true, upsert: true }
-      );
-
-      if (existing) updated++;
-      else inserted++;
-    }
-
-    return res.status(200).json({
-      message: 'Fancy markets sync completed',
+    res.status(200).json({
+      message: 'BM & Fancy markets sync completed',
       eventId,
-      inserted,
-      updated
+      insertedOrUpdated: true,
+      documentId: result._id
     });
 
   } catch (err) {
-    console.error('Fancymarket sync error:', err.message);
+    console.error('BM/Fancy sync error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

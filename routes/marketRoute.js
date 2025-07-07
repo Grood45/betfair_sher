@@ -8,6 +8,6 @@ router.get('/list/getExchangeOddsByEventId/:eventId', marketController.getExchan
 router.get('/list/sync/exchangeodds/:eventId', marketController.syncMarketList);
 
 router.get('/sync-bookmaker/:eventId', marketController.syncBookmakerMarkets);
-router.get('/sync-fancy-bm/:eventId', marketController.syncFancyMarkets);
+router.get('/sync-fancy-bm/:eventId', marketController.syncBmFancyMarkets);
 
 module.exports = router;
