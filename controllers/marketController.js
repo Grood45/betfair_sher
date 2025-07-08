@@ -305,3 +305,35 @@ exports.syncBmFancyMarkets = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+exports.getFancymarketByEventId = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({ message: 'Missing eventId in params' });
+    }
+
+    // Fetch the fancymarket snapshot for the given event
+    const fancySnapshot = await Fancymarket.findOne({ eventId });
+
+    if (!fancySnapshot) {
+      return res.status(404).json({ message: 'No fancymarket data found for this eventId' });
+    }
+
+    // const BMmarket = fancySnapshot?.BMmarket?.bm1 || [];
+    const fancymarket = fancySnapshot?.Fancymarket || [];
+
+    res.status(200).json({
+      message: 'Fancymarket data fetched successfully',
+      eventId,
+      fancymarket
+    });
+
+  } catch (err) {
+    console.error('Error fetching fancymarket data:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+
