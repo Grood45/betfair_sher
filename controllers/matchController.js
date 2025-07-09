@@ -28,6 +28,12 @@ exports.syncAllMatches = async (req, res) => {
     let totalSkipped  = 0;
     let totalFailed   = 0;
 
+    const duplicateEventIds = new Set();
+    const skippedEventDetails = [];
+    const insertedEventDetails = [];
+
+    const allEventIdMap = new Map(); // for duplicate detection
+
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
       const url     = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
@@ -46,18 +52,26 @@ exports.syncAllMatches = async (req, res) => {
         for (const ev of events) {
           try {
             const eventId = ev.event_id || ev.eventId;
+            const eventName = ev.sportrader_eventName || ev.event_name;
+
             if (!eventId) {
               totalSkipped++;
               continue;
             }
 
-            // Normalize event_date
+            // ✅ Check for duplicates within all sports
+            if (allEventIdMap.has(eventId)) {
+              duplicateEventIds.add(eventId);
+              continue;
+            } else {
+              allEventIdMap.set(eventId, eventName);
+            }
+
+            // ✅ Normalize event_date
             let eventDate = ev.event_date;
             if (typeof eventDate === 'string' || typeof eventDate === 'number') {
               eventDate = new Date(Number(eventDate));
-            } else if (eventDate instanceof Date) {
-              // valid
-            } else {
+            } else if (!(eventDate instanceof Date)) {
               eventDate = null;
             }
 
@@ -77,6 +91,9 @@ exports.syncAllMatches = async (req, res) => {
                 upsert: true
               }
             });
+
+            insertedEventDetails.push({ eventId, eventName });
+
           } catch (innerErr) {
             console.error(`Failed to prepare match (eventId: ${ev?.event_id || 'N/A'}):`, innerErr.message);
             totalFailed++;
@@ -87,9 +104,23 @@ exports.syncAllMatches = async (req, res) => {
         if (bulkOps.length) {
           const result = await Match.bulkWrite(bulkOps, { ordered: false });
 
-          totalInserted += result.upsertedCount || 0;
-          totalUpdated  += result.modifiedCount || 0;
-          totalSkipped  += bulkOps.length - ((result.upsertedCount || 0) + (result.modifiedCount || 0));
+          const inserted = result.upsertedCount || 0;
+          const updated  = result.modifiedCount || 0;
+          const skipped  = bulkOps.length - (inserted + updated);
+
+          totalInserted += inserted;
+          totalUpdated  += updated;
+          totalSkipped  += skipped;
+
+          // Capture skipped entries (already existed and unchanged)
+          if (skipped > 0) {
+            const skippedOps = bulkOps.slice(inserted + updated);
+            for (const op of skippedOps) {
+              const id = op.updateOne.filter.eventId;
+              const name = allEventIdMap.get(id);
+              skippedEventDetails.push({ eventId: id, eventName: name });
+            }
+          }
         }
 
       } catch (err) {
@@ -103,7 +134,12 @@ exports.syncAllMatches = async (req, res) => {
       totalInserted,
       totalUpdated,
       totalSkipped,
-      totalFailed
+      totalFailed,
+      duplicates: Array.from(duplicateEventIds).map(eventId => ({
+        eventId,
+        eventName: allEventIdMap.get(eventId)
+      })),
+      skippedEvents: skippedEventDetails
     });
 
   } catch (err) {
@@ -111,8 +147,6 @@ exports.syncAllMatches = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
-
 
 
 
