@@ -4,6 +4,7 @@ const MarketList = require('../models/Marketlist');
 const ExchangeOdds = require('../models/ExchangeOdds');
 const BookmakerMarket = require('../models/BookmakerMarket');
 const Fancymarket = require('../models/FancyMarket');
+const PremiumEvent = require('../models/PremiumEvent');
 
 exports.getAllLimits = async (req, res) => {
   try {
@@ -324,7 +325,7 @@ exports.getFancymarketByEventId = async (req, res) => {
     // const BMmarket = fancySnapshot?.BMmarket?.bm1 || [];
     const fancymarket = fancySnapshot?.Fancymarket || [];
 
-    
+
     res.status(200).json({
       message: 'Fancymarket data fetched successfully',
       eventId,
@@ -333,6 +334,48 @@ exports.getFancymarketByEventId = async (req, res) => {
 
   } catch (err) {
     console.error('Error fetching fancymarket data:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+
+exports.j7PremiumEvent = async (req, res) => {
+  try {
+    const { sportId, eventId } = req.params;
+
+    if (!sportId || !eventId) {
+      return res.status(400).json({ message: 'sportId and eventId are required' });
+    }
+
+    // 1️⃣ Send POST request as JSON payload (not form-data)
+    const { data } = await axios.post(
+      'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
+      { sportId, eventId }, // JSON body
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    // 2️⃣ Validate API response
+    if (!data || data.errorCode !== 0 || !data.eventId) {
+      return res.status(400).json({ message: 'Invalid or missing data from external API', data });
+    }
+
+    // 3️⃣ Upsert into MongoDB
+    const result = await PremiumEvent.findOneAndUpdate(
+      { eventId: data.eventId },
+      { $set: data },
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      message: result.createdAt?.getTime() === result.updatedAt?.getTime()
+        ? 'Inserted new premium event'
+        : 'Updated existing premium event',
+      _id: result._id,
+      eventId: result.eventId
+    });
+
+  } catch (err) {
+    console.error('Premium sync error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
