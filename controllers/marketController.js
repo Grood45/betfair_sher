@@ -324,6 +324,7 @@ exports.getFancymarketByEventId = async (req, res) => {
     // const BMmarket = fancySnapshot?.BMmarket?.bm1 || [];
     const fancymarket = fancySnapshot?.Fancymarket || [];
 
+    
     res.status(200).json({
       message: 'Fancymarket data fetched successfully',
       eventId,
