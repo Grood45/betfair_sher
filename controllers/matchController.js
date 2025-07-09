@@ -24,8 +24,8 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     let totalInserted = 0;
-    let totalUpdated  = 0;
-    let totalSkipped  = 0;
+    let totalFailed   = 0;
+    const failedMatches = [];
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
@@ -33,64 +33,73 @@ exports.syncAllMatches = async (req, res) => {
 
       try {
         const { data } = await axios.get(url);
-        const events   = data?.sports || data?.result;
+        const events = data?.sports || data?.result;
 
         if (!Array.isArray(events)) {
-          console.warn(`Invalid data for sportId ${sportId}`);   // continue next sport
+          console.warn(`Invalid data for sportId ${sportId}`);
           continue;
         }
 
-        /* ------------ build bulk operations ------------ */
-        const bulkOps = [];
+        const newMatches = [];
 
         for (const ev of events) {
           const eventId = ev.event_id || ev.eventId;
-          if (!eventId) continue;                                // skip if no ID
+          if (!eventId) continue;
 
-          // Attach your extra fields
-          const doc = {
-            ...ev,
-            eventId:             eventId,
-            sport_id:            sportId,   // external code
-            sportId:             sport._id, // Mongo ref
-            betfair_event_id:    ev.betfair_event_id || eventId
-          };
+          // Check if match already exists
+          const exists = await Match.exists({ eventId });
+          if (exists) continue;
 
-          bulkOps.push({
-            updateOne: {
-              filter: { eventId },
-              /** check for changes to avoid unnecessary writes */
-              update: [
-                {
-                  $set: doc
-                }
-              ],
-              upsert: true
+          // Safe event_date parsing
+          let eventDate = null;
+          try {
+            const raw = ev.event_date;
+            if (typeof raw === 'number' || !isNaN(Number(raw))) {
+              const timestamp = Number(raw);
+              if (timestamp > 1000000000000) {
+                eventDate = new Date(timestamp);
+              } else if (timestamp > 1000000000) {
+                eventDate = new Date(timestamp * 1000);
+              }
+            } else if (typeof raw === 'string' && !isNaN(Date.parse(raw))) {
+              eventDate = new Date(raw);
             }
+          } catch (err) {
+            eventDate = null;
+          }
+
+          newMatches.push({
+            ...ev,
+            eventId: eventId,
+            sport_id: sportId,
+            sportId: sport._id,
+            betfair_event_id: ev.betfair_event_id || eventId,
+            event_date: eventDate
           });
         }
 
-        /* ------------ execute bulkWrite ------------ */
-        if (bulkOps.length) {
-          const result = await Match.bulkWrite(bulkOps, { ordered: false });
-
-          totalInserted += (result.upsertedCount || 0);
-          totalUpdated  += (result.modifiedCount  || 0);
-          // skipped = attempted - (inserted+updated)
-          totalSkipped  += bulkOps.length - (result.upsertedCount + result.modifiedCount);
+        if (newMatches.length) {
+          try {
+            const result = await Match.insertMany(newMatches, { ordered: false });
+            totalInserted += result.length;
+          } catch (insertErr) {
+            console.error(`Insert error for sportId ${sportId}:`, insertErr.message);
+            totalFailed += newMatches.length;
+            failedMatches.push(...newMatches.map(m => ({ eventId: m.eventId, eventName: m.sportrader_eventName || m.event_name })));
+          }
         }
 
       } catch (err) {
         console.error(`Sync error sportId ${sportId} :`, err.message);
-        continue; // proceed with next sport
+        continue;
       }
     }
 
     res.status(200).json({
-      message: 'Sync completed',
+      message: 'Sync completed (insert only)',
       totalInserted,
-      totalUpdated,
-      totalSkipped
+      totalFailed,
+      failedMatches
     });
 
   } catch (err) {
@@ -98,6 +107,7 @@ exports.syncAllMatches = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 
 
