@@ -26,7 +26,9 @@ exports.syncAllMatches = async (req, res) => {
     let totalFailed = 0;
     let totalFetched = 0;
     const failedMatches = [];
+    const duplicates = [];
     const allEventIds = [];
+    const fetchedEventMap = {};  // key = eventId, value = full object
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
@@ -42,18 +44,18 @@ exports.syncAllMatches = async (req, res) => {
         }
 
         totalFetched += events.length;
+
         const newMatches = [];
 
         for (const ev of events) {
           const eventId = ev.event_id || ev.eventId;
           if (!eventId) continue;
 
-          const eventDate = ev.event_date;
           const eventName = ev.sportrader_eventName || ev.event_name || "";
 
           allEventIds.push({ eventId, eventName });
+          fetchedEventMap[eventId] = ev;
 
-          // Normalize match_odds_market
           let normalizedMarket = [];
           if (ev.match_odds_market) {
             if (Array.isArray(ev.match_odds_market)) {
@@ -83,7 +85,7 @@ exports.syncAllMatches = async (req, res) => {
 
             event_name: eventName,
             event_timezone: ev.event_timezone || "",
-            event_date: eventDate,
+            event_date: ev.event_date || "",
             event_date_ist_formatted: ev.event_date_ist_formatted || "",
 
             is_in_play: ev.is_in_play || "",
@@ -128,28 +130,57 @@ exports.syncAllMatches = async (req, res) => {
             const result = await Match.insertMany(newMatches, { ordered: false });
             totalInserted += result.length;
           } catch (insertErr) {
-            console.error(`Insert error for sportId ${sportId}:`, insertErr.message);
-            totalFailed += newMatches.length;
-            failedMatches.push(...newMatches.map(m => ({
-              eventId: m.eventId,
-              eventName: m.sportrader_eventName || m.event_name
-            })));
+            const writeErrors = insertErr?.writeErrors || [];
+
+            for (const err of writeErrors) {
+              const index = err.index;
+              const failedDoc = newMatches[index];
+
+              if (err.code === 11000) {
+                duplicates.push({
+                  eventId: failedDoc.eventId,
+                  eventName: failedDoc.sportrader_eventName || failedDoc.event_name
+                });
+              } else {
+                failedMatches.push({
+                  eventId: failedDoc?.eventId || 'unknown',
+                  eventName: failedDoc?.sportrader_eventName || 'unknown',
+                  reason: err.errmsg || 'Unknown error'
+                });
+              }
+            }
+
+            totalFailed += writeErrors.length;
           }
         }
 
       } catch (err) {
-        console.error(`Sync error sportId ${sportId}:`, err.message);
+        console.error(`Sync error for sportId ${sportId}:`, err.message);
         continue;
       }
     }
+
+    // Get all inserted eventIds from DB
+    const insertedDocs = await Match.find(
+      { eventId: { $in: Object.keys(fetchedEventMap) } },
+      { eventId: 1 }
+    ).lean();
+    const insertedEventIds = new Set(insertedDocs.map(doc => doc.eventId));
+
+    // Build notInserted with full event objects
+    const notInserted = Object.keys(fetchedEventMap)
+      .filter(eventId => !insertedEventIds.has(eventId))
+      .map(eventId => fetchedEventMap[eventId]);
 
     res.status(200).json({
       message: 'Sync completed (insert only)',
       totalFetched,
       totalInserted,
       totalFailed,
+      duplicates,
       failedMatches,
-      allEventIds
+      allEventIds,
+      notInserted
     });
 
   } catch (err) {
