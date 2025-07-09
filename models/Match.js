@@ -39,7 +39,7 @@ const matchSchema = new mongoose.Schema({
 
   event_name: String,
   event_timezone: String,
-  event_date: Date,
+  event_date: String,
   event_date_ist_formatted: String,
 
   is_in_play: String,
