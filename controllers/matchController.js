@@ -42,17 +42,26 @@ exports.syncAllMatches = async (req, res) => {
         }
 
         totalFetched += events.length;
-
         const newMatches = [];
 
         for (const ev of events) {
           const eventId = ev.event_id || ev.eventId;
           if (!eventId) continue;
 
-          const eventDate = ev.event_date; // ← no parsing
+          const eventDate = ev.event_date;
           const eventName = ev.sportrader_eventName || ev.event_name || "";
 
           allEventIds.push({ eventId, eventName });
+
+          // Normalize match_odds_market
+          let normalizedMarket = [];
+          if (ev.match_odds_market) {
+            if (Array.isArray(ev.match_odds_market)) {
+              normalizedMarket = ev.match_odds_market;
+            } else if (typeof ev.match_odds_market === 'object') {
+              normalizedMarket = [ev.match_odds_market];
+            }
+          }
 
           newMatches.push({
             eventId,
@@ -107,7 +116,7 @@ exports.syncAllMatches = async (req, res) => {
             score_card_id: ev.score_card_id || "",
             sportrader_card_id: ev.sportrader_card_id || "",
 
-            match_odds_market: ev.match_odds_market || [],
+            match_odds_market: normalizedMarket,
 
             sport_id: sportId,
             sportId: sport._id
