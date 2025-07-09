@@ -103,6 +103,6 @@ const matchSchema = new mongoose.Schema({
 
   isBettingEnabled: { type: Boolean, default: true }
 
-}, { timestamps: true });
+}, { timestamps: true ,strict: false });
 
 module.exports = mongoose.model('Match', matchSchema);
