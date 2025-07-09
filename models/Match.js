@@ -57,7 +57,7 @@ const matchSchema = new mongoose.Schema({
   isInPlay: Number,
   eventTypeId: String,
   competitionId: Number,
-  eventId: Number,
+  eventId: String,
   eventName: String,
   fancyInplay: Number,
   premiumInplay: Number,
