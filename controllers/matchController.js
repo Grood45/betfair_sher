@@ -23,12 +23,14 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     let totalInserted = 0;
-    let totalFailed = 0;
+    let totalUpdated = 0;
     let totalFetched = 0;
+    let totalFailed = 0;
+
     const failedMatches = [];
     const duplicates = [];
     const allEventIds = [];
-    const fetchedEventMap = {};  // key = eventId, value = full object
+    const fetchedEventMap = {};
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
@@ -45,7 +47,7 @@ exports.syncAllMatches = async (req, res) => {
 
         totalFetched += events.length;
 
-        const newMatches = [];
+        const bulkOps = [];
 
         for (const ev of events) {
           const eventId = ev.event_id || ev.eventId;
@@ -65,7 +67,7 @@ exports.syncAllMatches = async (req, res) => {
             }
           }
 
-          newMatches.push({
+          const matchDoc = {
             eventId,
             betfair_event_id: ev.betfair_event_id || eventId,
             sportradar_event_id: ev.sportradar_event_id || "",
@@ -122,36 +124,22 @@ exports.syncAllMatches = async (req, res) => {
 
             sport_id: sportId,
             sportId: sport._id
+          };
+
+          bulkOps.push({
+            updateOne: {
+              filter: { eventId },
+              update: { $set: matchDoc },
+              upsert: true
+            }
           });
         }
 
-        if (newMatches.length) {
-          try {
-            const result = await Match.insertMany(newMatches, { ordered: false });
-            totalInserted += result.length;
-          } catch (insertErr) {
-            const writeErrors = insertErr?.writeErrors || [];
+        if (bulkOps.length) {
+          const result = await Match.bulkWrite(bulkOps, { ordered: false });
 
-            for (const err of writeErrors) {
-              const index = err.index;
-              const failedDoc = newMatches[index];
-
-              if (err.code === 11000) {
-                duplicates.push({
-                  eventId: failedDoc.eventId,
-                  eventName: failedDoc.sportrader_eventName || failedDoc.event_name
-                });
-              } else {
-                failedMatches.push({
-                  eventId: failedDoc?.eventId || 'unknown',
-                  eventName: failedDoc?.sportrader_eventName || 'unknown',
-                  reason: err.errmsg || 'Unknown error'
-                });
-              }
-            }
-
-            totalFailed += writeErrors.length;
-          }
+          totalInserted += result.upsertedCount || 0;
+          totalUpdated += result.modifiedCount || 0;
         }
 
       } catch (err) {
@@ -160,22 +148,29 @@ exports.syncAllMatches = async (req, res) => {
       }
     }
 
-    // Get all inserted eventIds from DB
+    // Get notInserted (optional)
     const insertedDocs = await Match.find(
       { eventId: { $in: Object.keys(fetchedEventMap) } },
       { eventId: 1 }
     ).lean();
+
     const insertedEventIds = new Set(insertedDocs.map(doc => doc.eventId));
 
-    // Build notInserted with full event objects
     const notInserted = Object.keys(fetchedEventMap)
       .filter(eventId => !insertedEventIds.has(eventId))
-      .map(eventId => fetchedEventMap[eventId]);
+      .map(eventId => {
+        const ev = fetchedEventMap[eventId];
+        return {
+          eventId,
+          eventName: ev.sportrader_eventName || ev.event_name
+        };
+      });
 
     res.status(200).json({
-      message: 'Sync completed (insert only)',
+      message: 'Sync completed (insert or update)',
       totalFetched,
       totalInserted,
+      totalUpdated,
       totalFailed,
       duplicates,
       failedMatches,
@@ -188,6 +183,181 @@ exports.syncAllMatches = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// exports.syncAllMatches = async (req, res) => {
+//   try {
+//     const sports = await Sport.find({ betfairEventTypeId: { $ne: null } }).select('_id betfairEventTypeId');
+
+//     if (!sports.length) {
+//       return res.status(404).json({ message: 'No sports with betfairEventTypeId' });
+//     }
+
+//     let totalInserted = 0;
+//     let totalFailed = 0;
+//     let totalFetched = 0;
+//     const failedMatches = [];
+//     const duplicates = [];
+//     const allEventIds = [];
+//     const fetchedEventMap = {};  // key = eventId, value = full object
+
+//     for (const sport of sports) {
+//       const sportId = sport.betfairEventTypeId;
+//       const url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
+
+//       try {
+//         const { data } = await axios.get(url);
+//         const events = data?.sports || data?.result;
+
+//         if (!Array.isArray(events)) {
+//           console.warn(`Invalid data for sportId ${sportId}`);
+//           continue;
+//         }
+
+//         totalFetched += events.length;
+
+//         const newMatches = [];
+
+//         for (const ev of events) {
+//           const eventId = ev.event_id || ev.eventId;
+//           if (!eventId) continue;
+
+//           const eventName = ev.sportrader_eventName || ev.event_name || "";
+
+//           allEventIds.push({ eventId, eventName });
+//           fetchedEventMap[eventId] = ev;
+
+//           let normalizedMarket = [];
+//           if (ev.match_odds_market) {
+//             if (Array.isArray(ev.match_odds_market)) {
+//               normalizedMarket = ev.match_odds_market;
+//             } else if (typeof ev.match_odds_market === 'object') {
+//               normalizedMarket = [ev.match_odds_market];
+//             }
+//           }
+
+//           newMatches.push({
+//             eventId,
+//             betfair_event_id: ev.betfair_event_id || eventId,
+//             sportradar_event_id: ev.sportradar_event_id || "",
+//             sky_event_id: ev.sky_event_id || "",
+
+//             betfair_sport_id: ev.betfair_sport_id || "",
+//             sport_name: ev.sport_name || "",
+//             sportradar_sport_id: ev.sportradar_sport_id || "",
+
+//             betfair_competition_id: ev.betfair_competition_id || "",
+//             competition_name: ev.competition_name || "",
+//             sportradar_competition_id: ev.sportradar_competition_id || "",
+//             sportrader_compitionname: ev.sportrader_compitionname || "",
+//             sportrader_eventName: eventName,
+
+//             betfair_competitionRegion: ev.betfair_competitionRegion || "",
+
+//             event_name: eventName,
+//             event_timezone: ev.event_timezone || "",
+//             event_date: ev.event_date || "",
+//             event_date_ist_formatted: ev.event_date_ist_formatted || "",
+
+//             is_in_play: ev.is_in_play || "",
+//             status: ev.status || "",
+
+//             isFancy: ev.isFancy === true || ev.is_fancy == "1",
+//             isBm: ev.isBm === true || ev.isbm == "1",
+//             isPremium: ev.isPremium === true || ev.is_premium == "1",
+
+//             sportsName: ev.sport_name || "",
+//             competitionName: ev.competition_name || "",
+//             totalMatched: Number(ev.total_matched || 0),
+
+//             is_fancy: ev.is_fancy || "",
+//             isbm: ev.isbm || "",
+//             is_premium: ev.is_premium || "",
+//             scoure_card: ev.scoure_card || "",
+//             accept_any_odds: ev.accept_any_odds || "",
+
+//             Sportrader_market_id: ev.Sportrader_market_id || "",
+//             betfair_event_marketCount: ev.betfair_event_marketCount || "",
+
+//             min_stake: ev.min_stake || "",
+//             max_stake: ev.max_stake || "",
+//             odd_limit: ev.odd_limit || "",
+//             bet_delay: ev.bet_delay || "",
+
+//             port: ev.port || "",
+//             live_tv_id: ev.live_tv_id || "",
+//             score_card_id: ev.score_card_id || "",
+//             sportrader_card_id: ev.sportrader_card_id || "",
+
+//             match_odds_market: normalizedMarket,
+
+//             sport_id: sportId,
+//             sportId: sport._id
+//           });
+//         }
+
+//         if (newMatches.length) {
+//           try {
+//             const result = await Match.insertMany(newMatches, { ordered: false });
+//             totalInserted += result.length;
+//           } catch (insertErr) {
+//             const writeErrors = insertErr?.writeErrors || [];
+
+//             for (const err of writeErrors) {
+//               const index = err.index;
+//               const failedDoc = newMatches[index];
+
+//               if (err.code === 11000) {
+//                 duplicates.push({
+//                   eventId: failedDoc.eventId,
+//                   eventName: failedDoc.sportrader_eventName || failedDoc.event_name
+//                 });
+//               } else {
+//                 failedMatches.push({
+//                   eventId: failedDoc?.eventId || 'unknown',
+//                   eventName: failedDoc?.sportrader_eventName || 'unknown',
+//                   reason: err.errmsg || 'Unknown error'
+//                 });
+//               }
+//             }
+
+//             totalFailed += writeErrors.length;
+//           }
+//         }
+
+//       } catch (err) {
+//         console.error(`Sync error for sportId ${sportId}:`, err.message);
+//         continue;
+//       }
+//     }
+
+//     // Get all inserted eventIds from DB
+//     const insertedDocs = await Match.find(
+//       { eventId: { $in: Object.keys(fetchedEventMap) } },
+//       { eventId: 1 }
+//     ).lean();
+//     const insertedEventIds = new Set(insertedDocs.map(doc => doc.eventId));
+
+//     // Build notInserted with full event objects
+//     const notInserted = Object.keys(fetchedEventMap)
+//       .filter(eventId => !insertedEventIds.has(eventId))
+//       .map(eventId => fetchedEventMap[eventId]);
+
+//     res.status(200).json({
+//       message: 'Sync completed (insert only)',
+//       totalFetched,
+//       totalInserted,
+//       totalFailed,
+//       duplicates,
+//       failedMatches,
+//       allEventIds,
+//       notInserted
+//     });
+
+//   } catch (err) {
+//     console.error('Global sync error:', err.message);
+//     res.status(500).json({ message: 'Server error', error: err.message });
+//   }
+// };
 
 
 
