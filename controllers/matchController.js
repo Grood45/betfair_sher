@@ -28,7 +28,7 @@ exports.syncAllMatches = async (req, res) => {
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
-      const url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
+      const url = `https://apidiamond.online/sports/api/final-event-sport-list/4`;
 
       try {
         const { data } = await axios.get(url);
