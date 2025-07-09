@@ -24,11 +24,13 @@ exports.syncAllMatches = async (req, res) => {
 
     let totalInserted = 0;
     let totalFailed = 0;
+    let totalFetched = 0;
     const failedMatches = [];
+    const allEventIds = [];
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
-      const url = `https://apidiamond.online/sports/api/final-event-sport-list/4`;
+      const url = `https://apidiamond.online/sports/api/final-event-sport-list/${sportId}`;
 
       try {
         const { data } = await axios.get(url);
@@ -39,16 +41,21 @@ exports.syncAllMatches = async (req, res) => {
           continue;
         }
 
+        totalFetched += events.length;
+
         const newMatches = [];
 
         for (const ev of events) {
           const eventId = ev.event_id || ev.eventId;
           if (!eventId) continue;
 
-          const eventDate = ev.event_date; // ⚠️ insert as-is without checking
+          const eventDate = ev.event_date; // ← no parsing
+          const eventName = ev.sportrader_eventName || ev.event_name || "";
+
+          allEventIds.push({ eventId, eventName });
 
           newMatches.push({
-            eventId: eventId,
+            eventId,
             betfair_event_id: ev.betfair_event_id || eventId,
             sportradar_event_id: ev.sportradar_event_id || "",
             sky_event_id: ev.sky_event_id || "",
@@ -61,11 +68,11 @@ exports.syncAllMatches = async (req, res) => {
             competition_name: ev.competition_name || "",
             sportradar_competition_id: ev.sportradar_competition_id || "",
             sportrader_compitionname: ev.sportrader_compitionname || "",
-            sportrader_eventName: ev.sportrader_eventName || "",
+            sportrader_eventName: eventName,
 
             betfair_competitionRegion: ev.betfair_competitionRegion || "",
 
-            event_name: ev.event_name || ev.sportrader_eventName || "",
+            event_name: eventName,
             event_timezone: ev.event_timezone || "",
             event_date: eventDate,
             event_date_ist_formatted: ev.event_date_ist_formatted || "",
@@ -128,10 +135,12 @@ exports.syncAllMatches = async (req, res) => {
     }
 
     res.status(200).json({
-      message: 'Sync completed (insert only, no checks)',
+      message: 'Sync completed (insert only)',
+      totalFetched,
       totalInserted,
       totalFailed,
-      failedMatches
+      failedMatches,
+      allEventIds
     });
 
   } catch (err) {
