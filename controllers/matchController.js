@@ -28,11 +28,9 @@ exports.syncAllMatches = async (req, res) => {
     let totalSkipped  = 0;
     let totalFailed   = 0;
 
-    const duplicateEventIds = new Set();
     const skippedEventDetails = [];
-    const insertedEventDetails = [];
-
-    const allEventIdMap = new Map(); // for duplicate detection
+    const allEventIdMap = new Map(); // eventId → eventName
+    const seenEventIds = new Set();  // to prevent duplicates in same sync run
 
     for (const sport of sports) {
       const sportId = sport.betfairEventTypeId;
@@ -43,7 +41,7 @@ exports.syncAllMatches = async (req, res) => {
         const events = data?.sports || data?.result;
 
         if (!Array.isArray(events)) {
-          console.warn(`Invalid data format for sportId ${sportId}`);
+          console.warn(`Invalid data for sportId ${sportId}`);
           continue;
         }
 
@@ -52,22 +50,14 @@ exports.syncAllMatches = async (req, res) => {
         for (const ev of events) {
           try {
             const eventId = ev.event_id || ev.eventId;
-            const eventName = ev.sportrader_eventName || ev.event_name;
+            const eventName = ev.sportrader_eventName || ev.event_name || '';
 
-            if (!eventId) {
-              totalSkipped++;
-              continue;
-            }
+            if (!eventId || seenEventIds.has(eventId)) continue;
 
-            // ✅ Check for duplicates within all sports
-            if (allEventIdMap.has(eventId)) {
-              duplicateEventIds.add(eventId);
-              continue;
-            } else {
-              allEventIdMap.set(eventId, eventName);
-            }
+            seenEventIds.add(eventId);
+            allEventIdMap.set(eventId, eventName);
 
-            // ✅ Normalize event_date
+            // Normalize event_date
             let eventDate = ev.event_date;
             if (typeof eventDate === 'string' || typeof eventDate === 'number') {
               eventDate = new Date(Number(eventDate));
@@ -92,12 +82,9 @@ exports.syncAllMatches = async (req, res) => {
               }
             });
 
-            insertedEventDetails.push({ eventId, eventName });
-
           } catch (innerErr) {
-            console.error(`Failed to prepare match (eventId: ${ev?.event_id || 'N/A'}):`, innerErr.message);
+            console.error(`Match build error (eventId: ${ev?.event_id || 'N/A'}):`, innerErr.message);
             totalFailed++;
-            continue;
           }
         }
 
@@ -105,22 +92,25 @@ exports.syncAllMatches = async (req, res) => {
           const result = await Match.bulkWrite(bulkOps, { ordered: false });
 
           const inserted = result.upsertedCount || 0;
-          const updated  = result.modifiedCount || 0;
-          const skipped  = bulkOps.length - (inserted + updated);
+          const updated = result.modifiedCount || 0;
+          const matched = result.matchedCount || 0;
+          const skipped = matched - updated;
 
           totalInserted += inserted;
-          totalUpdated  += updated;
-          totalSkipped  += skipped;
+          totalUpdated += updated;
+          totalSkipped += skipped;
 
-          // Capture skipped entries (already existed and unchanged)
-          if (skipped > 0) {
-            const skippedOps = bulkOps.slice(inserted + updated);
-            for (const op of skippedOps) {
-              const id = op.updateOne.filter.eventId;
-              const name = allEventIdMap.get(id);
-              skippedEventDetails.push({ eventId: id, eventName: name });
-            }
-          }
+          // Log skipped eventIds
+          const skippedIds = bulkOps
+            .map(op => op.updateOne.filter.eventId)
+            .slice(inserted + updated, inserted + updated + skipped);
+
+          skippedIds.forEach(eventId => {
+            skippedEventDetails.push({
+              eventId,
+              eventName: allEventIdMap.get(eventId)
+            });
+          });
         }
 
       } catch (err) {
@@ -135,10 +125,6 @@ exports.syncAllMatches = async (req, res) => {
       totalUpdated,
       totalSkipped,
       totalFailed,
-      duplicates: Array.from(duplicateEventIds).map(eventId => ({
-        eventId,
-        eventName: allEventIdMap.get(eventId)
-      })),
       skippedEvents: skippedEventDetails
     });
 
@@ -147,6 +133,7 @@ exports.syncAllMatches = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 
 
