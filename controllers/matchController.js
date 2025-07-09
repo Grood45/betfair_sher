@@ -312,38 +312,98 @@ exports.getEventSummary = async (req, res) => {
 
 exports.getAllMatchesBySportId = async (req, res) => {
   try {
-    // Get query params
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
     const sportId = req.params.sportId;
-
-console.log(sportId);
-
-    const skip = (page - 1) * limit;
-
-    // Build filter
     const filter = {};
+
     if (sportId) {
       filter.sportId = sportId;
     }
 
-    // Query matches with optional sportId filter
-    const matches = await Match.find(filter)
-      .sort({ _id: 1 }) // oldest first; use -1 for newest first
-      .skip(skip)
-      .limit(limit);
+    const matches = await Match.find(filter).lean();
 
-    const total = await Match.countDocuments(filter);
+    const grouped = {
+      today: [],
+      tomorrow: [],
+      dayAfterTomorrow: [],
+      upcoming: []
+    };
+
+    const nowIST = moment().tz('Asia/Kolkata');
+    const today = nowIST.clone().startOf('day');
+    const tomorrow = today.clone().add(1, 'day');
+    const dayAfterTomorrow = today.clone().add(2, 'day');
+
+    const isInPlay = (eventDateRaw) => {
+      let date;
+      if (typeof eventDateRaw === 'string' && /^\d+$/.test(eventDateRaw)) {
+        date = moment.tz(parseInt(eventDateRaw), 'Asia/Kolkata');
+      } else if (typeof eventDateRaw === 'number') {
+        date = moment.tz(eventDateRaw, 'Asia/Kolkata');
+      } else {
+        date = moment.tz(eventDateRaw, 'Asia/Kolkata');
+      }
+      return date.isValid() && date.isSameOrAfter(nowIST);
+    };
+
+    for (const match of matches) {
+      const eventDate = match.event_date;
+      if (!eventDate) continue;
+
+      let eventMoment;
+      if (typeof eventDate === 'string' && /^\d+$/.test(eventDate)) {
+        eventMoment = moment.tz(parseInt(eventDate), 'Asia/Kolkata');
+      } else if (typeof eventDate === 'number') {
+        eventMoment = moment.tz(eventDate, 'Asia/Kolkata');
+      } else {
+        eventMoment = moment.tz(eventDate, 'Asia/Kolkata');
+      }
+
+      if (!eventMoment.isValid()) continue;
+
+      const eventDay = eventMoment.clone().startOf('day');
+
+      const matchWithFlag = {
+        ...match,
+        isInPlay: isInPlay(eventDate)
+      };
+
+      if (eventDay.isSame(today)) {
+        grouped.today.push(matchWithFlag);
+      } else if (eventDay.isSame(tomorrow)) {
+        grouped.tomorrow.push(matchWithFlag);
+      } else if (eventDay.isSame(dayAfterTomorrow)) {
+        grouped.dayAfterTomorrow.push(matchWithFlag);
+      } else if (eventDay.isAfter(dayAfterTomorrow)) {
+        grouped.upcoming.push(matchWithFlag);
+      }
+    }
+
+    const sortByEventDateDesc = (a, b) =>
+      Number(b.event_date) - Number(a.event_date);
+
+    const sortWithInplayFirst = (arr) => {
+      const inplay = arr.filter(m => m.isInPlay);
+      const rest = arr.filter(m => !m.isInPlay);
+      return [
+        ...inplay.sort(sortByEventDateDesc),
+        ...rest.sort(sortByEventDateDesc)
+      ];
+    };
 
     res.status(200).json({
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      matches
+      groupedMatches: {
+        today: sortWithInplayFirst(grouped.today),
+        tomorrow: sortWithInplayFirst(grouped.tomorrow),
+        dayAfterTomorrow: sortWithInplayFirst(grouped.dayAfterTomorrow),
+        upcoming: sortWithInplayFirst(grouped.upcoming)
+      }
     });
+
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
+    res.status(500).json({
+      message: 'Failed to fetch matches',
+      error: err.message
+    });
   }
 };
 
