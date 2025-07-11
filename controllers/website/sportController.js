@@ -17,9 +17,38 @@ exports.getAllSportNames = async (req, res) => {
   try {
     const sports = await Sport.find({}, { displayName: 1, icon: 1, position: 1 }).sort({ position: 1 });
 
+    const currentIST = moment().tz("Asia/Kolkata").toDate();
+
+    const sportsWithCounts = await Promise.all(sports.map(async (sport) => {
+      const sportId = sport._id.toString();
+
+      const sportMatches = await Match.find({ sportId: sportId });
+
+      let inplayCount = 0;
+      let upcomingCount = 0;
+
+      sportMatches.forEach(match => {
+        const matchEventDate = moment(match.event_date);
+        
+        if (matchEventDate.isValid()) {
+            if (matchEventDate.isBefore(currentIST)) {
+                inplayCount++;
+            } else {
+                upcomingCount++;
+            }
+        }
+      });
+
+      return {
+        ...sport.toObject(),
+        inplayCount,
+        upcomingCount
+      };
+    }));
+
     return res.status(200).json({
       message: 'Sports fetched successfully',
-      data: sports
+      data: sportsWithCounts
     });
   } catch (err) {
     console.error('Error fetching sports:', err.message);
