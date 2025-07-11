@@ -39,6 +39,8 @@ exports.createOrUpdateLimit = async (req, res) => {
 
 exports.getExchangeOddsByEventId = async (req, res) => {
   try {
+
+    //Marketlimit
     const { eventId } = req.params;
 
     if (!eventId) {
@@ -49,9 +51,10 @@ exports.getExchangeOddsByEventId = async (req, res) => {
      * Fetch exchange odds and the snapshot in parallel
      * -----------------------------------------------------------
      */
-    const [odds, fancySnapshot] = await Promise.all([
+    const [odds, fancySnapshot,marketLimits] = await Promise.all([
       ExchangeOdds.find({ eventId }),
-      Fancymarket.findOne({ eventId })          // one document per event
+      Fancymarket.findOne({ eventId }) ,         // one document per event
+      Marketlimit.find({}) 
     ]);
 
     if (!odds.length) {
@@ -67,7 +70,8 @@ exports.getExchangeOddsByEventId = async (req, res) => {
       message: 'Exchange odds fetched successfully',
       total  : odds.length,
       MatchOdds   : odds,        // <‑‑ original key stays the same
-      BMmarket              // <‑‑ added just below `data`
+      BMmarket ,             // <‑‑ added just below `data`
+      MarketLimit : marketLimits 
     });
 
   } catch (err) {
