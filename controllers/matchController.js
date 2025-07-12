@@ -587,7 +587,7 @@ exports.syncPremiumEvent = async (req, res) => {
     }
 
     // 1️⃣ Send POST request as JSON payload (not form-data)
-    const { data } = await axios.post(
+    const data = await axios.post(
       'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
       { sportId, eventId }, // JSON body
       { headers: { 'Content-Type': 'application/json' } }
@@ -600,7 +600,7 @@ exports.syncPremiumEvent = async (req, res) => {
 
     // 3️⃣ Upsert into MongoDB
     const result = await PremiumEvent.findOneAndUpdate(
-      { eventId: data.eventId },
+      { eventId: eventId },
       { $set: data },
       { new: true, upsert: true }
     );
