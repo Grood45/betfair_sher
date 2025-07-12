@@ -580,7 +580,7 @@ exports.getAllMatchesBySportId = async (req, res) => {
 
 exports.syncPremiumEvent = async (req, res) => {
   try {
-    const { sportId, eventId } = req.params;
+    const { sportId, eventId } = req.body;
 
     if (!sportId || !eventId) {
       return res.status(400).json({ message: 'sportId and eventId are required' });
@@ -589,25 +589,25 @@ exports.syncPremiumEvent = async (req, res) => {
     // 1️⃣ Send POST request
     const response = await axios.post(
       'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
-      { sportId:4, eventId:34469077 },
+      { sportId, eventId },
       { headers: { 'Content-Type': 'application/json' } }
     );
 
-    const data = response.data; // ✅ FIX: extract actual response body
+    const data = response;
 
     // 2️⃣ Validate API response
-    if (!data || Object.keys(data).length === 0) {
+    if (!data) {
       return res.status(400).json({ message: 'Invalid or missing data from external API', data });
     }
 
     // 3️⃣ Upsert into MongoDB with jsonData
     const result = await PremiumEvent.findOneAndUpdate(
-      { eventId },
+      { eventId: eventId },
       {
         $set: {
           sportId,
           eventId,
-          jsonData: data // ✅ Store only the response body
+          jsonData: data
         }
       },
       { new: true, upsert: true }
@@ -618,8 +618,7 @@ exports.syncPremiumEvent = async (req, res) => {
         ? 'Inserted new premium event'
         : 'Updated existing premium event',
       _id: result._id,
-      eventId: result.eventId,
-      data: result.jsonData // return what was saved
+      data: data
     });
 
   } catch (err) {
