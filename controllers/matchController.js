@@ -374,6 +374,18 @@ exports.getMatchesBySportId = async (req, res) => {
   }
 };
 
+exports.getEventMatchesBySportId = async (req, res) => {
+  try {
+    const { sportId } = req.params;
+
+    const matches = await Match.find({ sportId: sportId }).sort({ startTime: 1 });
+
+    res.status(200).json(matches);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching matches', error: err.message });
+  }
+};
+
 
 exports.getAllMatches = async (req, res) => {
   try {
