@@ -578,7 +578,6 @@ exports.getAllMatchesBySportId = async (req, res) => {
 };
 
 
-
 exports.syncPremiumEvent = async (req, res) => {
   try {
     const { sportId, eventId } = req.params;
@@ -587,41 +586,34 @@ exports.syncPremiumEvent = async (req, res) => {
       return res.status(400).json({ message: 'sportId and eventId are required' });
     }
 
-    // Check if Sportradar format (e.g., sr:sport:21, sr:match:61455169)
+    // Detect if IDs are from Sportradar format
     const isSportradar = sportId.startsWith('sr:') && eventId.startsWith('sr:');
 
-    let data;
+    // Choose the correct API URL
+    const apiUrl = isSportradar
+      ? 'https://apidiamond.online/sports/api/v1/core/list-markets'
+      : 'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr';
 
-    if (isSportradar) {
-      // 🔁 Call Sportradar API
-      const response = await axios.post(
-        'https://apidiamond.online/sports/api/v1/core/list-markets',
-        { sportId, eventId },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      data = response.data;
+    // Fetch data from the selected API
+    const response = await axios.post(
+      apiUrl,
+      { sportId, eventId },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
-      if (!data) {
-        return res.status(400).json({ message: 'Invalid or missing Sportradar data', data });
-      }
+    const data = response.data;
 
-    } else {
-      // 🔁 Call Betfair API
-      const response = await axios.post(
-        'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
-        { sportId, eventId },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      data = response.data;
-
-      if (!data) {
-        return res.status(400).json({ message: 'Invalid or missing Betfair data', data });
-      }
+    // Basic validation
+    if (!data || Object.keys(data).length === 0) {
+      return res.status(400).json({
+        message: 'Invalid or empty response from external API',
+        data
+      });
     }
 
-    // 📦 Upsert into MongoDB
+    // Upsert the document
     const result = await PremiumEvent.findOneAndUpdate(
-      { eventId: eventId },
+      { eventId },
       {
         $set: {
           sportId,
