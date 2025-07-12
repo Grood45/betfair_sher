@@ -59,6 +59,7 @@ exports.getAllSportNames = async (req, res) => {
   }
 };
 
+//premium 
 
 
 exports.getInplayMatches = async (req, res) => {
