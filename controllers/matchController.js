@@ -589,7 +589,7 @@ exports.syncPremiumEvent = async (req, res) => {
     // 1️⃣ Send POST request
     const response = await axios.post(
       'https://apidiamond.online/sports/api/v1/feed/betfair-market-in-sr',
-      { sportId, eventId },
+      { sportId:4, eventId:34469077 },
       { headers: { 'Content-Type': 'application/json' } }
     );
 
