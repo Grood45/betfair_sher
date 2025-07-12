@@ -596,7 +596,7 @@ exports.syncPremiumEvent = async (req, res) => {
     const data = response.data;
 
     // 2️⃣ Validate API response
-    if (!data || data.errorCode !== 0 || !data.eventId) {
+    if (!data) {
       return res.status(400).json({ message: 'Invalid or missing data from external API', data });
     }
 
