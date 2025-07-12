@@ -619,7 +619,7 @@ exports.syncPremiumEvent = async (req, res) => {
         : 'Updated existing premium event',
       _id: result._id,
       eventId: result.eventId,
-      data: result.jsonData // return what was saved
+      data: response // return what was saved
     });
 
   } catch (err) {
