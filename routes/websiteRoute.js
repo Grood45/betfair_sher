@@ -11,7 +11,7 @@ router.get('/sport/fancy/:sportId', sportController.getInplayFancy);
 router.get('/sport/premium/:eventId', matchController.getPremiumEventByEventId);
 
 router.post('/sport/sync/premium/:sportId/:eventId', matchController.syncPremiumEvent);
-router.post('/event/sync/premium', matchController.syncPremiumEvent);
+router.post('/event/sync/premium/data', matchController.syncPremiumEvent);
 
 
 module.exports = router;
