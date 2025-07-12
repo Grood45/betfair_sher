@@ -593,16 +593,15 @@ exports.syncPremiumEvent = async (req, res) => {
       { headers: { 'Content-Type': 'application/json' } }
     );
 
-    const data = response;
+    const data = response.data; // ✅ extract only safe data
 
-    // 2️⃣ Validate API response
     if (!data) {
       return res.status(400).json({ message: 'Invalid or missing data from external API', data });
     }
 
-    // 3️⃣ Upsert into MongoDB with jsonData
+    // 3️⃣ Upsert into MongoDB with only data
     const result = await PremiumEvent.findOneAndUpdate(
-      { eventId: eventId },
+      { eventId },
       {
         $set: {
           sportId,
@@ -618,7 +617,7 @@ exports.syncPremiumEvent = async (req, res) => {
         ? 'Inserted new premium event'
         : 'Updated existing premium event',
       _id: result._id,
-      data: data
+      data: data // ✅ return clean data
     });
 
   } catch (err) {
