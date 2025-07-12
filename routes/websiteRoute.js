@@ -15,3 +15,5 @@ router.get('/event/sync/premium/:sportId/:eventId', matchController.syncPremiumE
 
 
 module.exports = router;
+
+
