@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const Sport = require('../../models/Sport');
 const Match = require('../../models/Match');
 const PremiumEvent = require('../../models/PremiumEvent');
+const ExchangeOdds = require('../../models/ExchangeOdds');
 
 const fs = require('fs');
 const path = require('path');
@@ -66,30 +67,50 @@ exports.getInplayMatches = async (req, res) => {
   try {
     const { sportName, sportId } = req.params;
 
+    // Validate sportId if provided
+    if (sportId && !mongoose.Types.ObjectId.isValid(sportId)) {
+      return res.status(400).json({ message: 'Invalid sportId' });
+    }
 
-    // Build filter based on IST time
-    const filter = {
-      time: { $lte: currentIST }
-    };
+    // Build query conditions based on provided params
+    let query = {};
 
     if (sportName) {
-      filter.sport_name = sportName;
+      query.sport_name = sportName;
     }
 
     if (sportId) {
-      filter.sportId = sportId;
+      query.sportId = sportId;
     }
 
-      // Validate if it's a valid ObjectId
-  if (!mongoose.Types.ObjectId.isValid(sportId)) {
-    return res.status(400).json({ message: 'Invalid sportId' });
-  }
-  const matches = await Match.find({ sportId });
+    // Fetch all matches matching the params
+    const matches = await Match.find(query).lean();
+
+    // Extract eventIds from matches
+    const eventIds = matches.map(match => match.eventId);
+
+    // Fetch odds for those eventIds
+    const oddsList = await ExchangeOdds.find({ eventId: { $in: eventIds } }).lean();
+
+    // Map eventId -> odds array
+    const oddsMap = {};
+    for (const odds of oddsList) {
+      if (!oddsMap[odds.eventId]) {
+        oddsMap[odds.eventId] = [];
+      }
+      oddsMap[odds.eventId].push(odds);
+    }
+
+    // Add matchOdds to each match
+    const enrichedMatches = matches.map(match => ({
+      ...match,
+      matchOdds: oddsMap[match.eventId] || []
+    }));
 
     res.status(200).json({
       message: 'In-play matches fetched successfully',
-      count: matches.length,
-      data: matches
+      count: enrichedMatches.length,
+      data: enrichedMatches
     });
 
   } catch (err) {
