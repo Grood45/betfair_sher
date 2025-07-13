@@ -376,13 +376,34 @@ exports.getMatchesBySportId = async (req, res) => {
 
 exports.getEventMatchesBySportId = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const { sportId } = req.params;
 
-    const matches = await Match.find({ sportId: sportId }).sort({ startTime: 1 });
+    const query = {};
 
-    res.status(200).json(matches);
+    if (sportId) {
+      query.sportId = sportId; // Assuming sportId is stored as a Number
+    }
+
+    const matches = await Match.find(query)
+      .sort({ startTime: 1 }) // Sort by startTime (earliest first)
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Match.countDocuments(query);
+
+    res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      matches
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error fetching matches', error: err.message });
+    res.status(500).json({ message: 'Failed to fetch matches', error: err.message });
   }
 };
 
