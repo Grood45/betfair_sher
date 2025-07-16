@@ -152,6 +152,7 @@ app.post('/api/proxy-sports', async (req, res) => {
 
 app.use("/", routes.authRoute);
 app.use("/api/sport", routes.sportRoute);
+app.use("/api/betting/v1", routes.serviceRoute);
 
 
 // 404 Error handling
