@@ -57,7 +57,7 @@ app.use(cors({
 }));
 
 app.get('/', (req, res) => {
-  res.send('Hello, Welcome to my Node.js app running on VPS!');
+  res.send('Hello, Welcome to Betfair & SportRadar app running');
 });
 
 app.post('/api/proxy-sports', async (req, res) => {
