@@ -56,7 +56,7 @@ exports.sportList = async (req, res) => {
           sportName: name,
           position: nextPosition++,
           betfairSportList: item,
-          sportradarSportList: {}, // placeholder if not available now
+          sportradarSportList: new mongoose.Types.Mixed({}), // placeholder if not available now
           isBettingEnabled: false,
           status: 1
         });
