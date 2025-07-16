@@ -71,8 +71,7 @@ exports.sportList = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'Event types fetched and synced successfully',
-      eventTypes
+      message: 'Event types fetched and synced successfully'
     });
 
   } catch (error) {
