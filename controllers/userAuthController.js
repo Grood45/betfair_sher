@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
-const LoginHistory = require('../models/loginHistory');
 // Render Register Page
 exports.registerPage = (req, res) => {
   res.render('auth/register');
@@ -92,11 +91,7 @@ exports.loginUser = async (req, res) => {
     const ipAddress = forwarded ? forwarded.split(',')[0] : req.ip;
     const browser = req.headers['user-agent'];
 
-   const history = await LoginHistory.create({
-      userId: user._id,
-      ipAddress,
-      browser
-    });
+ 
 
     res.status(200).json({
       message: "Login successful",

@@ -7,7 +7,7 @@ const path = require('path');
 const cors = require('cors'); // add this at the top
 const bodyParser = require('body-parser');
 const urlService = require('./config/utils/asyncurl.min');
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3007;
 const routes = require('./routes/routeWrapper');
 const fs = require('fs');
 app.set('trust proxy', true);
@@ -151,14 +151,8 @@ app.post('/api/proxy-sports', async (req, res) => {
 });
 
 app.use("/", routes.authRoute);
-app.use("/api/dashboard", routes.dashboardRoute);
-app.use("/api", routes.workerRoute);
-app.use("/api/partner", routes.partnerRoute);
-app.use("/api/score", routes.scoreApiRoute);
 app.use("/api/sport", routes.sportRoute);
-app.use("/api/matches", routes.matchRoute);
-app.use("/api/market", routes.marketRoute);
-app.use("/api/website", routes.websiteRoute);
+
 
 // 404 Error handling
 app.use((req, res, next) => {
