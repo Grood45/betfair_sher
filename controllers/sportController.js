@@ -7,7 +7,6 @@ const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 
   
-const axios = require('axios');
 const Sport = require('../models/Sport'); // adjust the path as needed
 
 exports.sportList = async (req, res) => {
