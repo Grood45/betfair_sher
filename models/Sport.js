@@ -1,9 +1,26 @@
 const mongoose = require('mongoose');
 
 const sportSchema = new mongoose.Schema({
+  sportId: {
+    type: Number,
+    unique: true,
+    required: true
+  },
   sportName: {
     type: String,
     required: true
+  },
+  position: {
+    type: Number,
+    default: 0
+  },
+  minBet: {
+    type: Number,
+    default: 100
+  },
+  maxBet: {
+    type: Number,
+    default: 500000
   },
 
   // Betfair full API data
@@ -35,4 +52,29 @@ const sportSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+
+sportSchema.pre('validate', async function (next) {
+  if (!this.sportId) {
+    let exists = true;
+    let newId;
+    while (exists) {
+      newId = Math.floor(100000 + Math.random() * 900000);
+      const existing = await mongoose.models.Sport.findOne({ sportId: newId });
+      if (!existing) exists = false;
+    }
+    this.sportId = newId;
+  }
+  next();
+});
+
+sportSchema.pre('save', async function (next) {
+  if (this.isNew && this.position == null) {
+    const last = await mongoose.models.Sport.findOne().sort('-position').select('position');
+    this.position = last && last.position ? last.position + 1 : 1;
+  }
+  next();
+});
+
 module.exports = mongoose.model('Sport', sportSchema);
+
+
