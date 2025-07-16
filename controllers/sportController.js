@@ -35,6 +35,9 @@ exports.sportList = async (req, res) => {
 
     const eventTypes = [];
 
+    let last = await Sport.findOne().sort('-position').select('position');
+    let nextPosition = last?.position ? last.position + 1 : 1;
+
     for (const item of result) {
       const { id, name } = item.eventType;
       const marketCount = item.marketCount;
@@ -51,6 +54,7 @@ exports.sportList = async (req, res) => {
         // Create new record
         const newSport = new Sport({
           sportName: name,
+          position: nextPosition++,
           betfairSportList: item,
           sportradarSportList: {}, // placeholder if not available now
           isBettingEnabled: false,

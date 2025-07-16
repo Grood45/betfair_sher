@@ -67,13 +67,7 @@ sportSchema.pre('validate', async function (next) {
   next();
 });
 
-sportSchema.pre('save', async function (next) {
-  if (this.isNew && this.position == null) {
-    const last = await mongoose.models.Sport.findOne().sort('-position').select('position');
-    this.position = last && last.position ? last.position + 1 : 1;
-  }
-  next();
-});
+
 
 module.exports = mongoose.model('Sport', sportSchema);
 
