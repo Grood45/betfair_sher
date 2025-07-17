@@ -9,63 +9,77 @@ const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
   
 
 exports.sportList = async (req, res) => {
-  const appKey = 'fslpapQyGZSmkZW3';
-  const sessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
+  const betfairAppKey = 'fslpapQyGZSmkZW3';
+  const betfairSessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
 
-  const url = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
-  const headers = {
-    'X-Application': appKey,
-    'X-Authentication': sessionToken,
+  const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
+  const sportradarUrl = 'https://scatalog.mysportsfeed.io/api/v1/core/getsports';
+
+  const betfairHeaders = {
+    'X-Application': betfairAppKey,
+    'X-Authentication': betfairSessionToken,
     'Content-Type': 'application/json'
   };
-  const payload = [{
-    jsonrpc: '2.0',
-    method: 'SportsAPING/v1.0/listEventTypes',
-    params: { filter: {} },
-    id: 1
-  }];
+
+  const betfairPayload = [
+    {
+      jsonrpc: '2.0',
+      method: 'SportsAPING/v1.0/listEventTypes',
+      params: { filter: {} },
+      id: 1
+    }
+  ];
+
+  const sportradarPayload = {
+    operatorId: 'laser247',
+    providerId: 'SportRadar',
+    token: 'c0e509b0-6bc1-4132-80cb-71b54345af12'
+  };
 
   try {
-    // Betfair Sports
-    const response = await axios.post(url, payload, { headers });
-    const betfairSports = response.data[0]?.result || [];
-
-    // Sportradar Sports (Mocked list, replace with your own fetch logic)
-    const sportradarSports = [
-      { name: 'Soccer', id: 'sr:sport:1' },
-      { name: 'Tennis', id: 'sr:sport:2' },
-      { name: 'Cricket', id: 'sr:sport:3' },
-      { name: 'Basketball', id: 'sr:sport:4' },
-      // Add more as per your actual data
-    ];
-
-    const allNamesSet = new Set();
-
-    // Collect all unique sport names from both
-    betfairSports.forEach(item => allNamesSet.add(item.eventType.name));
-    sportradarSports.forEach(item => allNamesSet.add(item.name));
-
+    // Get existing max position
     let last = await Sport.findOne().sort('-position').select('position');
     let nextPosition = last?.position ? last.position + 1 : 1;
 
-    for (const name of allNamesSet) {
-      const bf = betfairSports.find(b => b.eventType.name === name);
-      const sr = sportradarSports.find(s => s.name === name);
+    // Step 1: Get Betfair Sports
+    const betfairResponse = await axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders });
+    const betfairResult = betfairResponse.data[0]?.result || [];
 
-      const existing = await Sport.findOne({ sportName: name });
+    // Step 2: Get Sportradar Sports
+    const sportradarResponse = await axios.post(sportradarUrl, sportradarPayload);
+    const sportradarList = sportradarResponse.data?.sports || [];
 
-      if (existing) {
-        existing.betfairSportList = bf || { eventType: { id: "0", name }, marketCount: 0 };
-        existing.sportradarSportList = sr || { id: "0", name };
-        existing.timestamp = new Date();
-        existing.status = 1;
-        await existing.save();
+    // Build maps
+    const sportradarMap = {};
+    const processedSportNames = new Set(); // to track all processed sports
+
+    for (const sr of sportradarList) {
+      sportradarMap[sr.sportName.toLowerCase()] = sr;
+    }
+
+    // Step 3: Process Betfair Sports
+    for (const item of betfairResult) {
+      const { id, name } = item.eventType;
+      const lowerName = name.toLowerCase();
+      const matchedSR = sportradarMap[lowerName] || { sportId: '0' };
+
+      processedSportNames.add(lowerName);
+
+      const existingSport = await Sport.findOne({ sportName: name });
+
+      if (existingSport) {
+        existingSport.betfairSportList = item;
+        existingSport.sportradarSportList = matchedSR;
+        existingSport.timestamp = new Date();
+        existingSport.status = 1;
+        await existingSport.save();
       } else {
         const newSport = new Sport({
           sportName: name,
+          sportId: Math.floor(100000 + Math.random() * 900000),
           position: nextPosition++,
-          betfairSportList: bf || { eventType: { id: "0", name }, marketCount: 0 },
-          sportradarSportList: sr || { id: "0", name },
+          betfairSportList: item,
+          sportradarSportList: matchedSR,
           isBettingEnabled: false,
           status: 1
         });
@@ -73,16 +87,42 @@ exports.sportList = async (req, res) => {
       }
     }
 
-    const totalCount = await Sport.countDocuments();
+    // Step 4: Process remaining Sportradar sports not in Betfair
+    for (const sr of sportradarList) {
+      const lowerName = sr.sportName.toLowerCase();
+
+      if (processedSportNames.has(lowerName)) continue; // Already processed in Betfair loop
+
+      const existingSport = await Sport.findOne({ sportName: sr.sportName });
+
+      if (existingSport) {
+        existingSport.betfairSportList = null;
+        existingSport.sportradarSportList = sr;
+        existingSport.timestamp = new Date();
+        existingSport.status = 1;
+        await existingSport.save();
+      } else {
+        const newSport = new Sport({
+          sportName: sr.sportName,
+          sportId: Math.floor(100000 + Math.random() * 900000),
+          position: nextPosition++,
+          betfairSportList: null,
+          sportradarSportList: sr,
+          isBettingEnabled: false,
+          status: 1
+        });
+        await newSport.save();
+      }
+    }
 
     return res.status(200).json({
-      message: `Synced successfully. Total sports: ${totalCount}`
+      message: 'All sports synced from Betfair and Sportradar successfully'
     });
 
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Sync error:', error.message);
     return res.status(500).json({
-      message: 'Failed to sync sports',
+      message: 'Failed to sync sports from Betfair and Sportradar',
       error: error.response?.data || error.message
     });
   }
