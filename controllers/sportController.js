@@ -62,6 +62,9 @@ exports.sportList = async (req, res) => {
 
       // Find matching Sportradar sport by name
       const matchedSR = sportradarMap[name.toLowerCase()] || {};
+      if (Object.keys(matchedSR).length === 0) {
+        matchedSR.sportId = "0";
+      }
 
       const existingSport = await Sport.findOne({ sportName: name });
 
