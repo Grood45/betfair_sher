@@ -9,18 +9,18 @@ const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
   
 
 exports.sportList = async (req, res) => {
-  const appKey = 'fslpapQyGZSmkZW3';
-  const sessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
+  const betfairAppKey = 'fslpapQyGZSmkZW3';
+  const betfairSessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
 
-  const url = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
+  const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
-  const headers = {
-    'X-Application': appKey,
-    'X-Authentication': sessionToken,
+  const betfairHeaders = {
+    'X-Application': betfairAppKey,
+    'X-Authentication': betfairSessionToken,
     'Content-Type': 'application/json'
   };
 
-  const payload = [
+  const betfairPayload = [
     {
       jsonrpc: '2.0',
       method: 'SportsAPING/v1.0/listEventTypes',
@@ -29,34 +29,56 @@ exports.sportList = async (req, res) => {
     }
   ];
 
-  try {
-    const response = await axios.post(url, payload, { headers });
-    const result = response.data[0]?.result || [];
+  const sportradarUrl = 'https://scatalog.mysportsfeed.io/api/v1/core/getsports';
+  const sportradarPayload = {
+    operatorId: 'laser247',
+    providerId: 'SportRadar',
+    token: 'c0e509b0-6bc1-4132-80cb-71b54345af12'
+  };
 
-    const eventTypes = [];
+  try {
+    // Step 1: Get Betfair Sports
+    const betfairResponse = await axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders });
+    const betfairResult = betfairResponse.data[0]?.result || [];
+
+    // Step 2: Get Sportradar Sports
+    const sportradarResponse = await axios.post(sportradarUrl, sportradarPayload);
+    const sportradarList = sportradarResponse.data?.sports || [];
+
+    // Step 3: Build a map from Sportradar for matching
+    const sportradarMap = {};
+    for (const sr of sportradarList) {
+      sportradarMap[sr.sportName.toLowerCase()] = sr;
+    }
 
     let last = await Sport.findOne().sort('-position').select('position');
     let nextPosition = last?.position ? last.position + 1 : 1;
 
-    for (const item of result) {
+    const eventTypes = [];
+
+    for (const item of betfairResult) {
       const { id, name } = item.eventType;
       const marketCount = item.marketCount;
+
+      // Find matching Sportradar sport by name
+      const matchedSR = sportradarMap[name.toLowerCase()] || {};
 
       const existingSport = await Sport.findOne({ sportName: name });
 
       if (existingSport) {
-        // Update existing record
+        // Update
         existingSport.betfairSportList = item;
+        existingSport.sportradarSportList = matchedSR;
         existingSport.timestamp = new Date();
         existingSport.status = 1;
         await existingSport.save();
       } else {
-        // Create new record
+        // Create
         const newSport = new Sport({
           sportName: name,
           position: nextPosition++,
           betfairSportList: item,
-          sportradarSportList: new mongoose.Types.Mixed({}), // placeholder if not available now
+          sportradarSportList: matchedSR,
           isBettingEnabled: false,
           status: 1
         });
@@ -66,23 +88,24 @@ exports.sportList = async (req, res) => {
       eventTypes.push({
         id,
         name,
-        marketCount
+        marketCount,
+        matchedWithSportradar: !!matchedSR?.sportId
       });
     }
 
     return res.status(200).json({
-      message: 'Event types fetched and synced successfully'
+      message: 'Event types synced with Betfair and Sportradar successfully',
+      sportCount: eventTypes.length
     });
 
   } catch (error) {
-    console.error('Betfair API error:', error.message);
+    console.error('Sync error:', error.message);
     return res.status(500).json({
-      message: 'Failed to fetch event types from Betfair',
+      message: 'Failed to sync sports from Betfair and Sportradar',
       error: error.response?.data || error.message
     });
   }
 };
-
 
 // exports.sportList = async (req, res) => {
 //   const appKey = 'fslpapQyGZSmkZW3';
@@ -108,18 +131,48 @@ exports.sportList = async (req, res) => {
 //   try {
 //     const response = await axios.post(url, payload, { headers });
 //     const result = response.data[0]?.result || [];
-//     console.log(response);
 
-//     const eventTypes = result.map(item => ({
-//       id: item.eventType.id,
-//       name: item.eventType.name,
-//       marketCount: item.marketCount
-//     }));
+//     const eventTypes = [];
+
+//     let last = await Sport.findOne().sort('-position').select('position');
+//     let nextPosition = last?.position ? last.position + 1 : 1;
+
+//     for (const item of result) {
+//       const { id, name } = item.eventType;
+//       const marketCount = item.marketCount;
+
+//       const existingSport = await Sport.findOne({ sportName: name });
+
+//       if (existingSport) {
+//         // Update existing record
+//         existingSport.betfairSportList = item;
+//         existingSport.timestamp = new Date();
+//         existingSport.status = 1;
+//         await existingSport.save();
+//       } else {
+//         // Create new record
+//         const newSport = new Sport({
+//           sportName: name,
+//           position: nextPosition++,
+//           betfairSportList: item,
+//           sportradarSportList: new mongoose.Types.Mixed({}), // placeholder if not available now
+//           isBettingEnabled: false,
+//           status: 1
+//         });
+//         await newSport.save();
+//       }
+
+//       eventTypes.push({
+//         id,
+//         name,
+//         marketCount
+//       });
+//     }
 
 //     return res.status(200).json({
-//       message: 'Event types fetched successfully',
-//       eventTypes
+//       message: 'Event types fetched and synced successfully'
 //     });
+
 //   } catch (error) {
 //     console.error('Betfair API error:', error.message);
 //     return res.status(500).json({
@@ -128,3 +181,5 @@ exports.sportList = async (req, res) => {
 //     });
 //   }
 // };
+
+
