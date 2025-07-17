@@ -89,8 +89,27 @@ exports.sportList = async (req, res) => {
           sportName: name,
           sportId: Math.floor(100000 + Math.random() * 900000),
           position: nextPosition++,
-          betfairSportList: betfairItem,
-          sportradarSportList: sportradarItem,
+          betfairSportList: betfairItem
+          ? {
+              status: 1,
+              msg: "Matched successfully",
+              ...betfairItem
+            }
+          : {
+              status: 0,
+              msg: "No matching sport found from Betfair"
+            },
+        
+        sportradarSportList: sportradarItem
+          ? {
+              status: 1,
+              msg: "Sportradar item present",
+              ...sportradarItem
+            }
+          : {
+              status: 0,
+              msg: "No matching sport found from Sportradar"
+            },
           isBettingEnabled: false,
           status: 1
         });
