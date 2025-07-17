@@ -49,23 +49,7 @@ const sportSchema = new mongoose.Schema({
     default: 1
   }
 
-}, { timestamps: true,strict:false });
-
-
-sportSchema.pre('validate', async function (next) {
-  if (!this.sportId) {
-    let exists = true;
-    let newId;
-    while (exists) {
-      newId = Math.floor(100000 + Math.random() * 900000);
-      const existing = await mongoose.models.Sport.findOne({ sportId: newId });
-      if (!existing) exists = false;
-    }
-    this.sportId = newId;
-  }
-  next();
-});
-
+}, { timestamps: true});
 
 
 module.exports = mongoose.model('Sport', sportSchema);
