@@ -29,10 +29,9 @@ const sportSchema = new mongoose.Schema({
     default: {}
   },
 
-  // Sportradar full API data
   sportradarSportList: {
     type: mongoose.Schema.Types.Mixed,
-    default: {}
+    default: () => ({})
   },
 
   timestamp: {
@@ -50,7 +49,7 @@ const sportSchema = new mongoose.Schema({
     default: 1
   }
 
-}, { timestamps: true });
+}, { timestamps: true,strict:false });
 
 
 sportSchema.pre('validate', async function (next) {
