@@ -7,9 +7,16 @@ const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 
   
+// curl -k -X POST https://identitysso.betfair.com/api/login \
+//   -H "Content-Type: application/x-www-form-urlencoded" \
+//   -H "Accept: application/json" \
+//   -H "X-Application: fslpapQyGZSmkZW3" \
+//   -d "username=Sher951999@gmail.com&password=Sher@786@786"
+
+
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
+  const betfairSessionToken = 'nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
   const betfairHeaders = {
@@ -18,34 +25,61 @@ exports.sportList = async (req, res) => {
     'Content-Type': 'application/json'
   };
 
-  const betfairPayload = [
-    {
-      jsonrpc: '2.0',
-      method: 'SportsAPING/v1.0/listEventTypes',
-      params: { filter: {} },
-      id: 1
-    }
-  ];
+  const betfairPayload = [{
+    jsonrpc: '2.0',
+    method: 'SportsAPING/v1.0/listEventTypes',
+    params: { filter: {} },
+    id: 1
+  }];
+
+  const sportradarUrl = 'https://scatalog.mysportsfeed.io/api/v1/core/getsports';
+  const sportradarPayload = {
+    operatorId: 'laser247',
+    providerId: 'SportRadar',
+    token: 'c0e509b0-6bc1-4132-80cb-71b54345af12'
+  };
 
   try {
-    // Step 1: Get Betfair Sports
-    const betfairResponse = await axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders });
-    const betfairResult = betfairResponse.data[0]?.result || [];
+    // Step 1: Fetch sports from both APIs
+    const [betfairRes, sportradarRes] = await Promise.all([
+      axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders }),
+      axios.post(sportradarUrl, sportradarPayload)
+    ]);
 
-    // Step 2: Get the last position in Sport collection
+    const betfairResult = betfairRes.data[0]?.result || [];
+    const sportradarList = sportradarRes.data?.sports || [];
+
+    // Build maps for easier access
+    const betfairMap = {};
+    const sportradarMap = {};
+
+    for (const item of betfairResult) {
+      const name = item.eventType.name.trim().toLowerCase();
+      betfairMap[name] = item;
+    }
+
+    for (const sr of sportradarList) {
+      const name = sr.sportName.trim().toLowerCase();
+      sportradarMap[name] = sr;
+    }
+
+    // Merge keys from both sources
+    const allSportNames = new Set([...Object.keys(betfairMap), ...Object.keys(sportradarMap)]);
+
     let last = await Sport.findOne().sort('-position').select('position');
     let nextPosition = last?.position ? last.position + 1 : 1;
 
-    for (const item of betfairResult) {
-      const { id, name } = item.eventType;
-      const marketCount = item.marketCount;
+    for (const sportKey of allSportNames) {
+      const name = sportKey.charAt(0).toUpperCase() + sportKey.slice(1); // Capitalize first letter
+      const betfairItem = betfairMap[sportKey] || null;
+      const sportradarItem = sportradarMap[sportKey] || null;
 
-      // Check if sport already exists by name
-      const existingSport = await Sport.findOne({ sportName: name });
+      const existingSport = await Sport.findOne({ sportName: new RegExp(`^${name}$`, 'i') });
 
       if (existingSport) {
         // Update
-        existingSport.betfairSportList = item;
+        existingSport.betfairSportList = betfairItem;
+        existingSport.sportradarSportList = sportradarItem;
         existingSport.timestamp = new Date();
         existingSport.status = 1;
         await existingSport.save();
@@ -55,7 +89,8 @@ exports.sportList = async (req, res) => {
           sportName: name,
           sportId: Math.floor(100000 + Math.random() * 900000),
           position: nextPosition++,
-          betfairSportList: item,
+          betfairSportList: betfairItem,
+          sportradarSportList: sportradarItem,
           isBettingEnabled: false,
           status: 1
         });
@@ -64,17 +99,18 @@ exports.sportList = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'Betfair sports synced successfully'
+      message: 'All sports from Betfair and Sportradar synced successfully.'
     });
 
   } catch (error) {
     console.error('Sync error:', error.message);
     return res.status(500).json({
-      message: 'Failed to sync Betfair sports',
+      message: 'Failed to sync sports',
       error: error.response?.data || error.message
     });
   }
 };
+
 
 // exports.sportList = async (req, res) => {
 //   const appKey = 'fslpapQyGZSmkZW3';
