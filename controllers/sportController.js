@@ -91,24 +91,24 @@ exports.sportList = async (req, res) => {
           position: nextPosition++,
           betfairSportList: betfairItem
           ? {
-              status: 1,
-              msg: "Matched successfully",
+              isFound: 1,
+              message: "Sport found from Betfair",
               ...betfairItem
             }
           : {
-              status: 0,
-              msg: "No matching sport found from Betfair"
+            isFound: 0,
+              message: "No sport found from Betfair"
             },
         
         sportradarSportList: sportradarItem
           ? {
-              status: 1,
-              msg: "Sportradar item present",
+            isFound: 1,
+            message: "Sport found from Sportradar",
               ...sportradarItem
             }
           : {
-              status: 0,
-              msg: "No matching sport found from Sportradar"
+            isFound: 0,
+            message: "No sport found from Sportradar"
             },
           isBettingEnabled: false,
           status: 1
