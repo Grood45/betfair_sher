@@ -13,13 +13,11 @@ exports.sportList = async (req, res) => {
   const betfairSessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
 
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
-
   const betfairHeaders = {
     'X-Application': betfairAppKey,
     'X-Authentication': betfairSessionToken,
     'Content-Type': 'application/json'
   };
-
   const betfairPayload = [
     {
       jsonrpc: '2.0',
@@ -37,63 +35,79 @@ exports.sportList = async (req, res) => {
   };
 
   try {
-    // Step 1: Get Betfair Sports
+    // Fetch Betfair
     const betfairResponse = await axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders });
     const betfairResult = betfairResponse.data[0]?.result || [];
 
-    // Step 2: Get Sportradar Sports
+    // Fetch Sportradar
     const sportradarResponse = await axios.post(sportradarUrl, sportradarPayload);
     const sportradarList = sportradarResponse.data?.sports || [];
 
-    // Step 3: Build a map from Sportradar for matching
+    // Map for quick match
+    const betfairMap = {};
     const sportradarMap = {};
+
+    for (const item of betfairResult) {
+      betfairMap[item.eventType.name.toLowerCase()] = item;
+    }
+
     for (const sr of sportradarList) {
       sportradarMap[sr.sportName.toLowerCase()] = sr;
     }
 
+    // Start with the highest position
     let last = await Sport.findOne().sort('-position').select('position');
     let nextPosition = last?.position ? last.position + 1 : 1;
 
-    const eventTypes = [];
+    // All unique sport names from both APIs
+    const uniqueNames = new Set([
+      ...Object.keys(betfairMap),
+      ...Object.keys(sportradarMap)
+    ]);
 
-    for (const item of betfairResult) {
-      const { id, name } = item.eventType;
-      const marketCount = item.marketCount;
+    for (const sportKey of uniqueNames) {
+      const betfairItem = betfairMap[sportKey];
+      const sportradarItem = sportradarMap[sportKey];
 
-      // Find matching Sportradar sport by name
-      const matchedSR = sportradarMap[name.toLowerCase()] || {};
-      if (Object.keys(matchedSR).length === 0) {
-        matchedSR.sportId = "0";
-      }
+      const sportName = betfairItem?.eventType?.name || sportradarItem?.sportName || 'Unknown';
 
-      const existingSport = await Sport.findOne({ sportName: name });
+      const betfairEventType = betfairItem?.eventType || { id: "0", name: sportName };
+      const betfairSportList = {
+        eventType: {
+          id: betfairEventType.id || "0",
+          name: betfairEventType.name || sportName
+        },
+        marketCount: betfairItem?.marketCount || 0
+      };
 
-      if (existingSport) {
-        // Update
-        existingSport.betfairSportList = item;
-        existingSport.sportradarSportList = matchedSR;
-        existingSport.timestamp = new Date();
-        existingSport.status = 1;
-        await existingSport.save();
+      const sportradarSportList = sportradarItem || { sportName: sportName, sportId: "0", status: "UNKNOWN" };
+
+      // Check existing sport
+      const existing = await Sport.findOne({ sportName });
+
+      if (existing) {
+        existing.betfairSportList = betfairSportList;
+        existing.sportradarSportList = sportradarSportList;
+        existing.timestamp = new Date();
+        existing.status = 1;
+        await existing.save();
       } else {
-        // Create
         const newSport = new Sport({
-          sportName: name,
-          sportId:Math.floor(100000 + Math.random() * 900000),
+          sportName,
+          sportId: Math.floor(100000 + Math.random() * 900000),
           position: nextPosition++,
-          betfairSportList: item,
-          sportradarSportList: matchedSR,
+          betfairSportList,
+          sportradarSportList,
           isBettingEnabled: false,
           status: 1
         });
         await newSport.save();
       }
-
-
     }
 
     return res.status(200).json({
-      message: 'Event types synced with Betfair and Sportradar successfully'
+      message: 'Sports synced from Betfair and Sportradar successfully',
+      total: uniqueNames.size
     });
 
   } catch (error) {
