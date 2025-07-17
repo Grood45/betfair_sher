@@ -13,6 +13,7 @@ exports.sportList = async (req, res) => {
   const betfairSessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
 
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
+  const sportradarUrl = 'https://scatalog.mysportsfeed.io/api/v1/core/getsports';
 
   const betfairHeaders = {
     'X-Application': betfairAppKey,
@@ -29,7 +30,6 @@ exports.sportList = async (req, res) => {
     }
   ];
 
-  const sportradarUrl = 'https://scatalog.mysportsfeed.io/api/v1/core/getsports';
   const sportradarPayload = {
     operatorId: 'laser247',
     providerId: 'SportRadar',
@@ -37,15 +37,16 @@ exports.sportList = async (req, res) => {
   };
 
   try {
-    // Step 1: Get Betfair Sports
-    const betfairResponse = await axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders });
-    const betfairResult = betfairResponse.data[0]?.result || [];
+    // Fetch Betfair & Sportradar Sports
+    const [betfairRes, sportradarRes] = await Promise.all([
+      axios.post(betfairUrl, betfairPayload, { headers: betfairHeaders }),
+      axios.post(sportradarUrl, sportradarPayload)
+    ]);
 
-    // Step 2: Get Sportradar Sports
-    const sportradarResponse = await axios.post(sportradarUrl, sportradarPayload);
-    const sportradarList = sportradarResponse.data?.sports || [];
+    const betfairList = betfairRes.data[0]?.result || [];
+    const sportradarList = sportradarRes.data?.sports || [];
 
-    // Step 3: Build a map from Sportradar for quick match
+    // Create map for quick name match
     const sportradarMap = {};
     for (const sr of sportradarList) {
       sportradarMap[sr.sportName.toLowerCase()] = sr;
@@ -56,30 +57,23 @@ exports.sportList = async (req, res) => {
 
     const matchedSportradarNames = new Set();
 
-    // Step 4: Handle Betfair Sports
-    for (const item of betfairResult) {
+    // 🔁 Process all Betfair Sports
+    for (const item of betfairList) {
       const { id, name } = item.eventType;
-      const marketCount = item.marketCount;
+      const matchedSR = sportradarMap[name.toLowerCase()] || { sportId: '0' };
 
-      // Try to find a matching Sportradar sport by name
-      const matchedSR = sportradarMap[name.toLowerCase()] || {};
-      if (Object.keys(matchedSR).length > 0) {
+      if (matchedSR.sportId !== '0') {
         matchedSportradarNames.add(matchedSR.sportName.toLowerCase());
-      } else {
-        matchedSR.sportId = "0"; // mark as unmatched
       }
 
-      const existingSport = await Sport.findOne({ sportName: name });
-
-      if (existingSport) {
-        // Update
-        existingSport.betfairSportList = item;
-        existingSport.sportradarSportList = matchedSR;
-        existingSport.timestamp = new Date();
-        existingSport.status = 1;
-        await existingSport.save();
+      const existing = await Sport.findOne({ sportName: name });
+      if (existing) {
+        existing.betfairSportList = item;
+        existing.sportradarSportList = matchedSR;
+        existing.timestamp = new Date();
+        existing.status = 1;
+        await existing.save();
       } else {
-        // Create
         const newSport = new Sport({
           sportName: name,
           sportId: Math.floor(100000 + Math.random() * 900000),
@@ -93,35 +87,34 @@ exports.sportList = async (req, res) => {
       }
     }
 
-    // Step 5: Save unmatched Sportradar sports
+    // 🔁 Now insert unmatched Sportradar Sports
     for (const sr of sportradarList) {
-      const sportNameLower = sr.sportName.toLowerCase();
-
-      if (!matchedSportradarNames.has(sportNameLower)) {
+      const nameLower = sr.sportName.toLowerCase();
+      if (!matchedSportradarNames.has(nameLower)) {
         const exists = await Sport.findOne({ sportName: sr.sportName });
         if (!exists) {
-          const newSR = new Sport({
+          const newSportradarOnly = new Sport({
             sportName: sr.sportName,
-            sportId: Math.floor(100000 + Math.random() * 900000),
+            sportId: sr.sportId || Math.floor(100000 + Math.random() * 900000),
             position: nextPosition++,
             betfairSportList: null,
             sportradarSportList: sr,
             isBettingEnabled: false,
             status: 1
           });
-          await newSR.save();
+          await newSportradarOnly.save();
         }
       }
     }
 
     return res.status(200).json({
-      message: 'Event types synced from Betfair and Sportradar successfully, including unmatched Sportradar sports.'
+      message: '✅ All Betfair and Sportradar sports synced successfully, including unmatched ones.'
     });
 
   } catch (error) {
     console.error('Sync error:', error.message);
     return res.status(500).json({
-      message: 'Failed to sync sports from Betfair and Sportradar',
+      message: '❌ Failed to sync sports from Betfair and Sportradar',
       error: error.response?.data || error.message
     });
   }
