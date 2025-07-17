@@ -7,7 +7,6 @@ const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 
   
-
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
   const betfairSessionToken = 'UAieWoWy1voS1fqhg/r//VKstS7lul6+j7fS7GODp6M=';
@@ -37,7 +36,6 @@ exports.sportList = async (req, res) => {
   };
 
   try {
-    // Get existing max position
     let last = await Sport.findOne().sort('-position').select('position');
     let nextPosition = last?.position ? last.position + 1 : 1;
 
@@ -49,18 +47,21 @@ exports.sportList = async (req, res) => {
     const sportradarResponse = await axios.post(sportradarUrl, sportradarPayload);
     const sportradarList = sportradarResponse.data?.sports || [];
 
-    // Build maps
+    // Build normalized Sportradar Map
     const sportradarMap = {};
-    const processedSportNames = new Set(); // to track all processed sports
-
     for (const sr of sportradarList) {
-      sportradarMap[sr.sportName.toLowerCase()] = sr;
+      const normalizedName = sr.sportName.toLowerCase().trim();
+      sportradarMap[normalizedName] = sr;
     }
+
+    // Track all processed names
+    const processedSportNames = new Set();
 
     // Step 3: Process Betfair Sports
     for (const item of betfairResult) {
       const { id, name } = item.eventType;
-      const lowerName = name.toLowerCase();
+      const lowerName = name.toLowerCase().trim();
+
       const matchedSR = sportradarMap[lowerName] || { sportId: '0' };
 
       processedSportNames.add(lowerName);
@@ -87,11 +88,10 @@ exports.sportList = async (req, res) => {
       }
     }
 
-    // Step 4: Process remaining Sportradar sports not in Betfair
+    // Step 4: Save remaining Sportradar-only sports
     for (const sr of sportradarList) {
-      const lowerName = sr.sportName.toLowerCase();
-
-      if (processedSportNames.has(lowerName)) continue; // Already processed in Betfair loop
+      const lowerName = sr.sportName.toLowerCase().trim();
+      if (processedSportNames.has(lowerName)) continue;
 
       const existingSport = await Sport.findOne({ sportName: sr.sportName });
 
@@ -127,6 +127,7 @@ exports.sportList = async (req, res) => {
     });
   }
 };
+
 
 
 // exports.sportList = async (req, res) => {
