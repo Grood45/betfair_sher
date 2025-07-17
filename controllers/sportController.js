@@ -102,7 +102,7 @@ exports.sportList = async (req, res) => {
         if (!exists) {
           const newSR = new Sport({
             sportName: sr.sportName,
-            sportId: sr.sportId || Math.floor(100000 + Math.random() * 900000),
+            sportId: Math.floor(100000 + Math.random() * 900000),
             position: nextPosition++,
             betfairSportList: null,
             sportradarSportList: sr,
