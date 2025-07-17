@@ -59,21 +59,26 @@ exports.sportList = async (req, res) => {
     for (const item of betfairResult) {
       const { id, name } = item.eventType;
       const marketCount = item.marketCount;
-
-      // Find matching Sportradar sport by name
+    
+      // Try to match with Sportradar by name
       const matchedSR = sportradarMap[name.toLowerCase()] || {};
-
+    
       const existingSport = await Sport.findOne({ sportName: name });
-
+    
       if (existingSport) {
-        // Update
-        existingSport.betfairSportList = item;
-        existingSport.sportradarSportList = matchedSR;
+        // Update existing
+        existingSport.betfairSportList = item ?? {};
+        existingSport.sportradarSportList = matchedSR ?? {};
         existingSport.timestamp = new Date();
         existingSport.status = 1;
+    
+        if (Object.keys(matchedSR).length === 0) {
+          existingSport.markModified('sportradarSportList');
+        }
+    
         await existingSport.save();
       } else {
-        // Create
+        // Create new
         const newSport = new Sport({
           sportName: name,
           position: nextPosition++,
@@ -82,11 +87,15 @@ exports.sportList = async (req, res) => {
           isBettingEnabled: false,
           status: 1
         });
+    
+        if (Object.keys(matchedSR).length === 0) {
+          newSport.markModified('sportradarSportList');
+        }
+    
         await newSport.save();
       }
-
-
     }
+    
 
     return res.status(200).json({
       message: 'Event types synced with Betfair and Sportradar successfully'
