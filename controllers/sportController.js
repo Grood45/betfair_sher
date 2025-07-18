@@ -87,7 +87,6 @@ exports.sportList = async (req, res) => {
         // Create
         const newSport = new Sport({
           sportName: name,
-          sportId: Math.floor(100000 + Math.random() * 900000),
           position: nextPosition++,
           betfairSportList: betfairItem
           ? {

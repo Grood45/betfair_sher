@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 
 const sportSchema = new mongoose.Schema({
-  sportId: {
-    type: Number,
-    unique: true,
-    required: true
-  },
   sportName: {
     type: String,
     required: true
