@@ -1,0 +1,49 @@
+curl -X POST 'https://api.betfair.com/exchange/betting/json-rpc/v1' \
+  -H 'X-Application: fslpapQyGZSmkZW3' \
+  -H 'X-Authentication: nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=' \
+  -H 'Content-Type: application/json' \
+  -d '[{
+    "jsonrpc": "2.0",
+    "method": "SportsAPING/v1.0/listEventTypes",
+    "params": {
+      "filter": {}
+    },
+    "id": 1
+  }]'
+
+
+curl -X POST 'https://api.betfair.com/exchange/betting/json-rpc/v1' \
+  -H 'X-Application: fslpapQyGZSmkZW3' \
+  -H 'X-Authentication: nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=' \
+  -H 'Content-Type: application/json' \
+  -d '[{
+    "jsonrpc": "2.0",
+    "method": "SportsAPING/v1.0/listCompetitions",
+    "params": {
+      "filter": {}
+    },
+    "id": 1
+  }]'
+
+
+curl -X POST 'https://api.betfair.com/exchange/betting/json-rpc/v1' \
+  -H 'X-Application: fslpapQyGZSmkZW3' \
+  -H 'X-Authentication: nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+        "jsonrpc": "2.0",
+        "method": "SportsAPING/v1.0/listEvents",
+        "params": {
+            "filter": {
+                "eventTypeIds": [
+                    "1"
+                ],
+                "marketStartTime": {
+                   
+                }
+            }
+        },
+        "id": 1
+    }
+]'
