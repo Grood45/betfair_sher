@@ -25,3 +25,23 @@ exports.sportList = async (req, res) => {
   }
 };
 
+
+exports.getEvents = async (req, res) => {
+  try {
+    const allEvents = await EventList.find()
+      .populate('sportId', 'sportName position') // populate sport name and position
+      .sort({ timestamp: -1 });
+
+    return res.status(200).json({
+      message: 'All events fetched successfully.',
+      data: allEvents
+    });
+  } catch (error) {
+    console.error('Get all events error:', error.message);
+    return res.status(500).json({
+      message: 'Failed to fetch events.',
+      error: error.message
+    });
+  }
+};
+
