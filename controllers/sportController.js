@@ -241,6 +241,27 @@ exports.getEventsList = async (req, res) => {
           console.error(`Market data fetch failed for event ${event.id}:`, err.message);
         }
 
+
+        let cleanedMarketOdds = 0;
+
+        if (Array.isArray(marketOdds)) {
+          const odds = marketOdds[0];
+          cleanedMarketOdds = {
+            marketId: odds?.marketId || '',
+            status: odds?.status || '',
+            totalMatched: odds?.totalMatched || 0,
+            runners: Array.isArray(odds.runners) ? odds.runners : []
+          };
+        } else if (typeof marketOdds === 'object' && marketOdds !== null) {
+          cleanedMarketOdds = {
+            marketId: marketOdds.marketId || '',
+            status: marketOdds.status || '',
+            totalMatched: marketOdds.totalMatched || 0,
+            runners: Array.isArray(marketOdds.runners) ? marketOdds.runners : []
+          };
+        } else {
+          cleanedMarketOdds = 0;
+        }
         // Build enriched event object
         enrichedEvents.push({
           sportId:eventTypeId || 0,
@@ -263,11 +284,7 @@ exports.getEventsList = async (req, res) => {
           competition: Array.isArray(marketCatalogue)
             ? marketCatalogue[0]?.competition || 0
             : marketCatalogue?.competition || 0,
-            marketOdds: Array.isArray(marketOdds)
-            ? marketOdds[0]
-            : (typeof marketOdds === 'object' && marketOdds !== null)
-              ? marketOdds
-              : 0
+            marketOdds:cleanedMarketOdds
         });
       }
 
