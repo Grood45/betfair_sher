@@ -243,9 +243,12 @@ exports.getEventsList = async (req, res) => {
 
         // Build enriched event object
         enrichedEvents.push({
-          id: event.id,
+          sportId:eventTypeId || 0,
+          event_id: event.id,
           name: event.name,
-          openDate: event.openDate,
+          event_date: event.openDate,
+          timezone: event.timezone || null,
+          countryCode: event.countryCode || null,
           competition: Array.isArray(marketCatalogue)
             ? marketCatalogue[0]?.competition || 0
             : marketCatalogue?.competition || 0,
@@ -273,7 +276,7 @@ exports.getEventsList = async (req, res) => {
           sportradarEventList: {
             isFound: 0,
             message: 'Sportradar events not fetched yet',
-            result: []
+            events: []
           },
           status: 1
         });
