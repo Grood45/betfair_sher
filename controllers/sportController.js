@@ -208,7 +208,7 @@ exports.getEventsList = async (req, res) => {
                 marketTypeCodes: ['MATCH_ODDS']
               },
               maxResults: '1',
-              marketProjection: ['EVENT', 'COMPETITION', 'RUNNER_DESCRIPTION']
+              marketProjection: ['COMPETITION']
             },
             id: 3
           }];
@@ -244,12 +244,8 @@ exports.getEventsList = async (req, res) => {
         // Build enriched event object
         enrichedEvents.push({
           event: {
-            ...event,
-            competition: {
-              id: event.competition?.id || null,
-              name: competitionMap[event.competition?.id] || null
-            },
-            marketCatalogue,
+            ...event,        
+            competition:marketCatalogue,
             marketOdds
           }
         });
