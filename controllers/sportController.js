@@ -243,11 +243,11 @@ exports.getEventsList = async (req, res) => {
 
         // Build enriched event object
         enrichedEvents.push({
-          event: {
-            ...event,        
-            competition:marketCatalogue,
-            marketOdds
-          }
+          id: event.id,
+          name: event.name,
+          openDate: event.openDate,
+          competition:marketCatalogue.competition,
+          marketOdds
         });
       }
 
