@@ -246,10 +246,7 @@ exports.getEventsList = async (req, res) => {
           id: event.id,
           name: event.name,
           openDate: event.openDate,
-           competition:marketCatalogue[0]?.competition || {
-            id: null,
-            name: null
-          },
+          competition:marketCatalogue[0]?.competition,
           marketOdds
         });
       }
