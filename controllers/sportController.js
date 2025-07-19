@@ -247,9 +247,9 @@ exports.getEventsList = async (req, res) => {
           name: event.name,
           openDate: event.openDate,
           competition: Array.isArray(marketCatalogue)
-            ? marketCatalogue[0]?.competition || { id: null, name: null }
-            : marketCatalogue?.competition || { id: null, name: null },
-          marketOdds
+            ? marketCatalogue[0]?.competition || 0
+            : marketCatalogue?.competition || 0,
+            marketOdds: marketOdds?.[0] || 0
         });
       }
 
