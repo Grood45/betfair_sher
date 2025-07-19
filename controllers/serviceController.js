@@ -47,7 +47,7 @@ exports.getEvents = async (req, res) => {
 
     const objectId = new mongoose.Types.ObjectId(fastOddsId);
 
-    const events = await EventList.find({ fastOddsId: objectId }).sort({ timestamp: -1 });
+    const events = await EventList.find({ FastoddsId: objectId }).sort({ timestamp: -1 });
 
     return res.status(200).json({
       message: 'Events fetched successfully.',
