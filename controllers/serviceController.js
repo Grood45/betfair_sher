@@ -38,15 +38,16 @@ exports.getEvents = async (req, res) => {
       });
     }
 
-    // Validate and convert to ObjectId
+    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(fastOddsId)) {
       return res.status(400).json({
         message: 'Invalid fastOddsId format.',
       });
     }
 
-    const events = await EventList.find({ fastOddsId: mongoose.Types.ObjectId(fastOddsId) })
-      .sort({ timestamp: -1 });
+    const objectId = new mongoose.Types.ObjectId(fastOddsId);
+
+    const events = await EventList.find({ fastOddsId: objectId }).sort({ timestamp: -1 });
 
     return res.status(200).json({
       message: 'Events fetched successfully.',
