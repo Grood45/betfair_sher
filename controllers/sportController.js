@@ -252,7 +252,7 @@ exports.getEventsList = async (req, res) => {
           competition: Array.isArray(marketCatalogue)
             ? marketCatalogue[0]?.competition || 0
             : marketCatalogue?.competition || 0,
-            marketOdds: marketOdds?.[0] || 0
+            marketOdds
         });
       }
 
