@@ -6,6 +6,7 @@ const axios = require('axios');
 const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const EventList = require('../models/EventList'); 
+const mongoose = require('mongoose');
 
   
 
