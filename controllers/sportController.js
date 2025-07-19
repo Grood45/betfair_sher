@@ -194,11 +194,11 @@ exports.getEventsList = async (req, res) => {
 
       for (const ev of eventList) {
         const event = ev.event;
-        let marketCatalogue = [];
-        let marketOdds = [];
+        let marketCatalogue = null;
+        let marketOdds = null;
 
-        // Step 3A: Get Market Catalogue
         try {
+          // Fetch marketCatalogue
           const marketPayload = [{
             jsonrpc: '2.0',
             method: 'SportsAPING/v1.0/listMarketCatalogue',
@@ -213,17 +213,17 @@ exports.getEventsList = async (req, res) => {
             id: 3
           }];
           const marketRes = await axios.post(betfairUrl, marketPayload, { headers });
-          marketCatalogue = marketRes.data[0]?.result || [];
+          const catalogueResult = marketRes.data[0]?.result || [];
 
-          if (marketCatalogue.length > 0) {
-            const marketId = marketCatalogue[0].marketId;
+          if (catalogueResult.length > 0) {
+            marketCatalogue = catalogueResult[0];
 
-            // Step 3B: Get Market Odds
+            // Fetch odds for the market
             const oddsPayload = [{
               jsonrpc: '2.0',
               method: 'SportsAPING/v1.0/listMarketBook',
               params: {
-                marketIds: [marketId],
+                marketIds: [marketCatalogue.marketId],
                 priceProjection: {
                   priceData: ['EX_BEST_OFFERS']
                 }
@@ -231,17 +231,27 @@ exports.getEventsList = async (req, res) => {
               id: 4
             }];
             const oddsRes = await axios.post(betfairUrl, oddsPayload, { headers });
-            marketOdds = oddsRes.data[0]?.result || [];
+            const oddsResult = oddsRes.data[0]?.result || [];
+
+            if (oddsResult.length > 0) {
+              marketOdds = oddsResult[0];
+            }
           }
         } catch (err) {
-          console.error(`Market fetch failed for event ${event.id}:`, err.message);
+          console.error(`Market data fetch failed for event ${event.id}:`, err.message);
         }
 
+        // Build enriched event object
         enrichedEvents.push({
-          ...ev,
-          competitionName: competitionMap[event.competition?.id] || null,
-          marketCatalogue,
-          marketOdds
+          event: {
+            ...event,
+            competition: {
+              id: event.competition?.id || null,
+              name: competitionMap[event.competition?.id] || null
+            },
+            marketCatalogue,
+            marketOdds
+          }
         });
       }
 
