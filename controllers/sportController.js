@@ -7,13 +7,6 @@ const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const EventList = require('../models/EventList'); 
   
-// curl -k -X POST https://identitysso.betfair.com/api/login \
-//   -H "Content-Type: application/x-www-form-urlencoded" \
-//   -H "Accept: application/json" \
-//   -H "X-Application: fslpapQyGZSmkZW3" \
-//   -d "username=Sher951999@gmail.com&password=Sher@786@786"
-
-
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
   const betfairSessionToken = 'nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=';
@@ -132,7 +125,7 @@ exports.sportList = async (req, res) => {
 
 exports.getEventsList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=';
+  const betfairSessionToken = 'FGlurrRAOkMwngr4ADn3kZdEJA+g92ec8gY9ZrsoEjs=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
   try {
@@ -142,56 +135,117 @@ exports.getEventsList = async (req, res) => {
       const eventTypeId = sport.betfairSportList?.eventType?.id;
       if (!eventTypeId) continue;
 
-      const betfairPayload = [{
+      const headers = {
+        'X-Application': betfairAppKey,
+        'X-Authentication': betfairSessionToken,
+        'Content-Type': 'application/json',
+      };
+
+      // Step 1: Fetch Events
+      const eventPayload = [{
         jsonrpc: '2.0',
         method: 'SportsAPING/v1.0/listEvents',
         params: {
           filter: {
             eventTypeIds: [eventTypeId],
-            marketStartTime: {} // Empty as per your curl
+            marketStartTime: {
+              from: new Date().toISOString()
+            }
           }
         },
         id: 1
       }];
 
-      const headers = {
-        'X-Application': betfairAppKey,
-        'X-Authentication': betfairSessionToken,
-        'Content-Type': 'application/json'
-      };
-
-      let betfairResult = [];
-      let message = 'No event found from Betfair';
+      let eventList = [];
       let isFound = 0;
+      let message = 'No event found from Betfair';
 
       try {
-        const response = await axios.post(betfairUrl, betfairPayload, { headers });
-        betfairResult = response.data[0]?.result || [];
-        if (betfairResult.length > 0) {
+        const eventRes = await axios.post(betfairUrl, eventPayload, { headers });
+        eventList = eventRes.data[0]?.result || [];
+        if (eventList.length > 0) {
           isFound = 1;
-          message = 'Events found from Betfair';
+          message = 'Events fetched successfully';
         }
-      } catch (err) {
-        console.error(`Failed to fetch Betfair events for sport ${sport.sportName}:`, err.message);
+      } catch (error) {
+        console.error('Error fetching events:', error.message);
       }
 
+      // Step 2: Fetch Competitions
+      const competitionPayload = [{
+        jsonrpc: '2.0',
+        method: 'SportsAPING/v1.0/listCompetitions',
+        params: {
+          filter: {
+            eventTypeIds: [eventTypeId]
+          }
+        },
+        id: 2
+      }];
+
+      let competitionMap = {};
+      try {
+        const compRes = await axios.post(betfairUrl, competitionPayload, { headers });
+        const competitions = compRes.data[0]?.result || [];
+        competitions.forEach(c => {
+          competitionMap[c.competition.id] = c.competition.name;
+        });
+      } catch (err) {
+        console.error('Error fetching competitions:', err.message);
+      }
+
+      // Step 3: Fetch MarketCatalogue for each event
+      const enrichedEvents = [];
+      for (const ev of eventList) {
+        const event = ev.event;
+        let marketCatalogue = [];
+
+        try {
+          const marketPayload = [{
+            jsonrpc: '2.0',
+            method: 'SportsAPING/v1.0/listMarketCatalogue',
+            params: {
+              filter: {
+                eventIds: [event.id],
+                marketTypeCodes: ['MATCH_ODDS']
+              },
+              maxResults: '1',
+              marketProjection: ['EVENT', 'COMPETITION', 'RUNNER_DESCRIPTION']
+            },
+            id: 3
+          }];
+
+          const marketRes = await axios.post(betfairUrl, marketPayload, { headers });
+          marketCatalogue = marketRes.data[0]?.result || [];
+        } catch (err) {
+          console.error(`MarketCatalogue fetch failed for ${event.id}:`, err.message);
+        }
+
+        enrichedEvents.push({
+          ...ev,
+          competitionName: competitionMap[event.competition?.id] || null,
+          marketCatalogue
+        });
+      }
+
+      // Save or Update DB
       const existing = await EventList.findOne({ sportId: sport._id });
 
       if (existing) {
         existing.betfairEventList = {
           isFound,
           message,
-          result: betfairResult
+          events: enrichedEvents
         };
         existing.timestamp = new Date();
         await existing.save();
       } else {
         const newEventList = new EventList({
-          sportId: sport._id,
+          FastoddsId: sport._id,
           betfairEventList: {
             isFound,
             message,
-            result: betfairResult
+            events: enrichedEvents
           },
           sportradarEventList: {
             isFound: 0,
@@ -204,9 +258,7 @@ exports.getEventsList = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      message: 'Betfair event list synced successfully for all sports.'
-    });
+    return res.status(200).json({ message: 'Betfair event list synced successfully for all sports.' });
 
   } catch (error) {
     console.error('Event sync error:', error.message);
@@ -216,3 +268,4 @@ exports.getEventsList = async (req, res) => {
     });
   }
 };
+

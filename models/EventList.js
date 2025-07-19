@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const EventListSchema = new mongoose.Schema({
-  sportId: {
+  FastoddsId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Sport',
     required: true
@@ -9,7 +9,7 @@ const EventListSchema = new mongoose.Schema({
   betfairEventList: {
     isFound: Number,
     message: String,
-    result: [mongoose.Schema.Types.Mixed]
+    events: [mongoose.Schema.Types.Mixed]
   },
   sportradarEventList: {
     isFound: Number,
