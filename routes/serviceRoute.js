@@ -4,7 +4,7 @@ const serviceController = require('../controllers/serviceController');
 const verifyToken = require('../middleware/verifyToken');
 // Register routes
 router.get('/sport/list', serviceController.sportList);
-router.get('/event/list', serviceController.getEvents);
+router.get('/event/list/:fastOddsId', serviceController.getEvents);
 
 
 

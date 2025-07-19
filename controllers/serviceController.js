@@ -29,20 +29,27 @@ exports.sportList = async (req, res) => {
 
 exports.getEvents = async (req, res) => {
   try {
-    const allEvents = await EventList.find()
-      .populate('sportId', 'sportName position') // populate sport name and position
-      .sort({ timestamp: -1 });
+    const { fastOddsId } = req.params;
+
+    if (!fastOddsId) {
+      return res.status(400).json({
+        message: 'fastOddsId parameter is required.',
+      });
+    }
+
+    const events = await EventList.find({ fastOddsId }).sort({ timestamp: -1 });
 
     return res.status(200).json({
-      message: 'All events fetched successfully.',
-      data: allEvents
+      message: 'Events fetched successfully.',
+      data: events,
     });
   } catch (error) {
-    console.error('Get all events error:', error.message);
+    console.error('Error fetching events:', error.message);
     return res.status(500).json({
       message: 'Failed to fetch events.',
-      error: error.message
+      error: error.message,
     });
   }
 };
+
 
