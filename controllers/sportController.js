@@ -9,7 +9,7 @@ const EventList = require('../models/EventList');
   
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'nPScA9u3FW4UcPTzKZxuO2XQjuLyFfvVwdP7hVbwduw=';
+  const betfairSessionToken = 'FnY1o16yM53LM7dYWk6aE1oD4RuzoReewegst5yJtbk=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
   const betfairHeaders = {
