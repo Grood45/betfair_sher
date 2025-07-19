@@ -249,6 +249,17 @@ exports.getEventsList = async (req, res) => {
           event_date: event.openDate,
           timezone: event.timezone || null,
           countryCode: event.countryCode || null,
+          isinplay: (event.inPlay === true || new Date(event.openDate) <= new Date()) ? "true" : "false",
+          isFancy: "",
+          isBM: "",
+          isPremium: "",
+          score: true,
+          tv: false,
+          total_matched: Array.isArray(marketCatalogue)
+          ? marketCatalogue[0]?.totalMatched || 0
+          : marketCatalogue?.totalMatched || 0,
+          position: 1,
+          market_count: 3,
           competition: Array.isArray(marketCatalogue)
             ? marketCatalogue[0]?.competition || 0
             : marketCatalogue?.competition || 0,
