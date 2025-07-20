@@ -6,7 +6,93 @@ const axios = require('axios');
 const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const EventList = require('../models/EventList'); 
-  
+const SpotRadarEvent = require('../models/SpotRadarEvent');
+
+
+
+
+
+exports.fetchAndStoreSportradarEvents = async (req, res) => {
+  try {
+    const token = 'ca5822fe-b4f8-4251-b72d-b3b4bfe4b133'; // move to env in prod
+
+    const sports = await Sport.find({}); // Get all sports
+
+    for (const sport of sports) {
+      const sportId = sport?.sportradarSportList?.sportId;
+      const FastoddsId = sport?._id;
+
+      if (!sportId || !FastoddsId) continue;
+
+      // Step 1: Get total count
+      const countResponse = await axios.post(
+        'https://scatalog.mysportsfeed.io/api/v1/core/sr-events-count',
+        {
+          operatorId: '99hub',
+          providerId: 'sportsbook',
+          partnerId: 'HBPID01',
+          isInplay: true,
+          sportId,
+          token
+        }
+      );
+
+      const item = countResponse?.data?.itemsCount?.find(
+        (i) => i.sportId === sportId
+      );
+
+      const eventCount = item?.total || 0;
+      const totalPages = Math.ceil(eventCount / 20);
+
+      console.log(`Sport: ${sportId} | Total Events: ${eventCount} | Pages: ${totalPages}`);
+
+      let allEvents = [];
+
+      // Step 2: Loop through pages
+      for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
+        const eventResponse = await axios.post(
+          'https://scatalog.mysportsfeed.io/api/v2/core/getevents',
+          {
+            operatorId: '99hub',
+            providerId: 'sportsbook',
+            partnerId: 'HBPID01',
+            sportId,
+            token,
+            isInplay: true,
+            pageNo
+          }
+        );
+
+        const events = eventResponse?.data?.sports || [];
+        console.log(`Fetched ${events.length} events from page ${pageNo} for sport ${sportId}`);
+        if (events.length === 0) {
+          console.warn(`No events found on page ${pageNo}. Breaking...`);
+          break;
+        }
+        allEvents.push(...events);
+      }
+
+      // Step 3: Save to DB
+      await SpotRadarEvent.findOneAndUpdate(
+        { FastoddsId },
+        { 
+          radarSportId: sportId,
+          spotradardeventlist: allEvents
+         },
+        { upsert: true, new: true }
+      );
+
+      console.log(`Saved ${allEvents.length} events for sport ${sportId} in DB.`);
+    }
+
+    res.status(200).json({ message: 'Sportradar events fetched and stored successfully.' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
   const betfairSessionToken = 'FnY1o16yM53LM7dYWk6aE1oD4RuzoReewegst5yJtbk=';
