@@ -15,7 +15,6 @@ const SpotRadarEvent = require('../models/SpotRadarEvent');
 exports.fetchAndStoreSportradarEvents = async (req, res) => {
   try {
     const token = 'ca5822fe-b4f8-4251-b72d-b3b4bfe4b133'; // move to env in prod
-
     const sports = await Sport.find({}); // Get all sports
 
     for (const sport of sports) {
@@ -24,73 +23,74 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
 
       if (!sportId || !FastoddsId) continue;
 
-      // Step 1: Get total count
-      const countResponse = await axios.post(
-        'https://scatalog.mysportsfeed.io/api/v1/core/sr-events-count',
-        {
-          operatorId: '99hub',
-          providerId: 'sportsbook',
-          partnerId: 'HBPID01',
-          isInplay: true,
-          sportId,
-          token
-        }
-      );
+      let combinedEvents = [];
 
-      const item = countResponse?.data?.itemsCount?.find(
-        (i) => i.sportId === sportId
-      );
-
-      const eventCount = item?.total || 0;
-      const totalPages = Math.ceil(eventCount / 20);
-
-      console.log(`Sport: ${sportId} | Total Events: ${eventCount} | Pages: ${totalPages}`);
-
-      let allEvents = [];
-
-      // Step 2: Loop through pages
-      for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
-        const eventResponse = await axios.post(
-          'https://scatalog.mysportsfeed.io/api/v2/core/getevents',
+      for (const isInplay of [true, false]) {
+        // Step 1: Get count for inplay or pre-match
+        const countResponse = await axios.post(
+          'https://scatalog.mysportsfeed.io/api/v1/core/sr-events-count',
           {
             operatorId: '99hub',
             providerId: 'sportsbook',
             partnerId: 'HBPID01',
+            isInplay,
             sportId,
-            token,
-            isInplay: true,
-            pageNo
+            token
           }
         );
 
-        const events = eventResponse?.data?.sports || [];
-        console.log(`Fetched ${events.length} events from page ${pageNo} for sport ${sportId}`);
-        if (events.length === 0) {
-          console.warn(`No events found on page ${pageNo}. Breaking...`);
-          break;
+        const item = countResponse?.data?.itemsCount?.find(i => i.sportId === sportId);
+        const eventCount = item?.total || 0;
+        const totalPages = Math.ceil(eventCount / 20);
+
+        console.log(`Sport: ${sportId} | Inplay: ${isInplay} | Total Events: ${eventCount} | Pages: ${totalPages}`);
+
+        for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
+          const eventResponse = await axios.post(
+            'https://scatalog.mysportsfeed.io/api/v2/core/getevents',
+            {
+              operatorId: '99hub',
+              providerId: 'sportsbook',
+              partnerId: 'HBPID01',
+              sportId,
+              token,
+              isInplay,
+              pageNo
+            }
+          );
+
+          const events = eventResponse?.data?.sports || [];
+          console.log(`Fetched ${events.length} events (inplay: ${isInplay}) from page ${pageNo}`);
+
+          if (events.length === 0) break;
+
+          // Optionally tag each event with isInplay flag
+          const taggedEvents = events.map(e => ({ ...e, isInplay }));
+          combinedEvents.push(...taggedEvents);
         }
-        allEvents.push(...events);
       }
 
-      // Step 3: Save to DB
+      // Save combined events
       await SpotRadarEvent.findOneAndUpdate(
         { FastoddsId },
-        { 
+        {
           radarSportId: sportId,
-          spotradardeventlist: allEvents
-         },
+          spotradardeventlist: combinedEvents
+        },
         { upsert: true, new: true }
       );
 
-      console.log(`Saved ${allEvents.length} events for sport ${sportId} in DB.`);
+      console.log(`Saved ${combinedEvents.length} total events for sportId ${sportId}`);
     }
 
-    res.status(200).json({ message: 'Sportradar events fetched and stored successfully.' });
+    res.status(200).json({ message: 'Sportradar events (inplay & non-inplay) fetched and stored successfully.' });
+
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
+
 
 
 exports.sportList = async (req, res) => {
