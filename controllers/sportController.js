@@ -95,7 +95,7 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
 
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'FnY1o16yM53LM7dYWk6aE1oD4RuzoReewegst5yJtbk=';
+  const betfairSessionToken = 'tXvPCalpouNSP2DpzapbCqNNDMLbl12iuc65vcg8Zf0=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
   const betfairHeaders = {
@@ -211,7 +211,7 @@ exports.sportList = async (req, res) => {
 
 exports.getEventsList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'FnY1o16yM53LM7dYWk6aE1oD4RuzoReewegst5yJtbk=';
+  const betfairSessionToken = 'tXvPCalpouNSP2DpzapbCqNNDMLbl12iuc65vcg8Zf0=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
   const axios = require('axios');
 
