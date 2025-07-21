@@ -416,57 +416,63 @@ exports.getEventsList = async (req, res) => {
 
 exports.fetchAndStoreBetfairMarkets = async (req, res) => {
   try {
-  
     const betfairAppKey = 'fslpapQyGZSmkZW3';
     const betfairSessionToken = 'tXvPCalpouNSP2DpzapbCqNNDMLbl12iuc65vcg8Zf0=';
 
-    const allEvents = await EventList.find({}); // Fetch all events
+    const allEvents = await EventList.find({});
 
     for (const event of allEvents) {
-      const betfair_event_id = event.betfairEventList?.events?.[0]?.event_id;
       const FastoddsId = event.FastoddsId;
+      const betfairEventLists = event.betfairEventList || [];
 
-      if (!betfair_event_id) continue;
+      for (const betfairItem of betfairEventLists) {
+        const eventObjects = betfairItem.events || [];
 
-      const response = await axios.post(
-        'https://api.betfair.com/exchange/betting/json-rpc/v1',
-        [
-          {
-            jsonrpc: '2.0',
-            method: 'SportsAPING/v1.0/listMarketCatalogue',
-            params: {
-              filter: {
-                eventIds: [betfair_event_id]
+        for (const ev of eventObjects) {
+          const betfair_event_id = ev.event_id;
+          if (!betfair_event_id) continue;
+
+          console.log(`Fetching markets for Event ID: ${betfair_event_id}, FastoddsID: ${FastoddsId}`);
+
+          const response = await axios.post(
+            'https://api.betfair.com/exchange/betting/json-rpc/v1',
+            [
+              {
+                jsonrpc: '2.0',
+                method: 'SportsAPING/v1.0/listMarketCatalogue',
+                params: {
+                  filter: { eventIds: [betfair_event_id] },
+                  maxResults: '100',
+                  marketProjection: ['MARKET_START_TIME', 'RUNNER_DESCRIPTION']
+                },
+                id: 1
+              }
+            ],
+            {
+              headers: {
+                'X-Application': betfairAppKey,
+                'X-Authentication': betfairSessionToken,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          const marketList = response?.data?.[0]?.result || [];
+
+          if (marketList.length > 0) {
+            await BetfairMarketlist.findOneAndUpdate(
+              { betfair_event_id },
+              {
+                $set: {
+                  FastoddsId,
+                  betfair_event_id,
+                  marketList
+                }
               },
-              maxResults: '100',
-              marketProjection: ['MARKET_START_TIME', 'RUNNER_DESCRIPTION']
-            },
-            id: 1
-          }
-        ],
-        {
-          headers: {
-            'X-Application': betfairAppKey,
-            'X-Authentication': betfairSessionToken,
-            'Content-Type': 'application/json'
+              { upsert: true, new: true }
+            );
           }
         }
-      );
-
-      const marketList = response?.data?.[0]?.result || [];
-
-      if (marketList.length > 0) {
-        await BetfairMarketlist.findOneAndUpdate(
-          { betfair_event_id },
-          {
-            $set: {
-              FastoddsId,
-              betfair_event_id,
-              marketList
-            }
-          },
-          { upsert: true, new: true }
-        );
       }
     }
 
@@ -476,4 +482,5 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 
