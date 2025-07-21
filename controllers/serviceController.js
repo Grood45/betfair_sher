@@ -85,11 +85,14 @@ exports.getEvents = async (req, res) => {
 
       return {
         event_name: event.name,
+        event_date: event.event_date,
+        status: matchedRadar?.status || 0,
         betfair_event_id: event.event_id,
         betfair_sport_id: event.sportId,
         spotradarSportId: matchedRadar?.sportId || 0,
         spotradarEventId: matchedRadar?.eventId || 0,
         ...event,
+        sportradarEventDetails:matchedRadar || 0
       };
     });
 
@@ -98,10 +101,18 @@ exports.getEvents = async (req, res) => {
       .filter(sre => !matchedRadarIds.has(sre.eventId))
       .map(sre => ({
         event_name: sre.eventName,
+        event_date: new Date(sre.openDate).toISOString(),
+        status: sre.status,
         betfair_event_id: 0,
         betfair_sport_id: 0,
         spotradarSportId: sre.sportId,
         spotradarEventId: sre.eventId,
+        "isFancy": "",
+        "isBM": "",
+        "isPremium": "",
+        "score": true,
+        "tv": false,
+        "position": 1,
         sportradarEventDetails: sre,
       }));
 
