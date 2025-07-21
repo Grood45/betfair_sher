@@ -134,3 +134,51 @@ exports.getEvents = async (req, res) => {
 };
 
 
+exports.getBetfairMarketByEventsId = async (req, res) => {
+  try {
+    const { sportId, eventId } = req.params;
+
+    if (!sportId || !eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing sportId or eventId in parameters',
+      });
+    }
+
+    // Find the eventList by FastoddsId
+    const eventList = await EventList.findOne({ FastoddsId: sportId });
+
+    if (!eventList) {
+      return res.status(404).json({
+        success: false,
+        message: 'No data found for given FastoddsId',
+      });
+    }
+
+    const events = eventList?.betfairEventList?.events || [];
+
+    const matchedEvent = events.find(e => e.event_id === eventId);
+
+    if (!matchedEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event ID not found under given FastoddsId',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Event found',
+      data: matchedEvent,
+    });
+
+  } catch (err) {
+    console.error('Error in getBetfairMarketByEventsId:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+

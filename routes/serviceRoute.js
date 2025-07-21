@@ -5,7 +5,7 @@ const verifyToken = require('../middleware/verifyToken');
 // Register routes
 router.get('/sport/list', serviceController.sportList);
 router.get('/event/list/:fastOddsId', serviceController.getEvents);
-
+router.get('/betfair/market/:sportId/:eventId', serviceController.getBetfairMarketByEventsId);
 
 
 module.exports = router;
