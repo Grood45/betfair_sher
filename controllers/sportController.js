@@ -420,20 +420,25 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
     const betfairSessionToken = 'tXvPCalpouNSP2DpzapbCqNNDMLbl12iuc65vcg8Zf0=';
 
     const allEvents = await EventList.find({});
-
+    
     for (const event of allEvents) {
       const FastoddsId = event.FastoddsId;
-      const betfairEventLists = event.betfairEventList || [];
+      const betfairEventLists = Array.isArray(event.betfairEventList)
+        ? event.betfairEventList
+        : [];
 
       for (const betfairItem of betfairEventLists) {
-        const eventObjects = betfairItem.events || [];
+        const eventObjects = Array.isArray(betfairItem.events)
+          ? betfairItem.events
+          : [];
 
         for (const ev of eventObjects) {
-          const betfair_event_id = ev.event_id;
+          const betfair_event_id = ev?.event_id;
           if (!betfair_event_id) continue;
 
-          console.log(`Fetching markets for Event ID: ${betfair_event_id}, FastoddsID: ${FastoddsId}`);
+          console.log(`Processing event ID: ${betfair_event_id} | FastoddsID: ${FastoddsId}`);
 
+          // Fetch market catalogue from Betfair
           const response = await axios.post(
             'https://api.betfair.com/exchange/betting/json-rpc/v1',
             [
@@ -471,6 +476,9 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
               },
               { upsert: true, new: true }
             );
+            console.log(`Saved ${marketList.length} markets for event ${betfair_event_id}`);
+          } else {
+            console.log(`No markets found for event ${betfair_event_id}`);
           }
         }
       }
@@ -478,9 +486,8 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
 
     res.status(200).json({ message: 'Betfair market data stored successfully' });
   } catch (error) {
-    console.error('Error fetching/storing betfair markets:', error.message);
+    console.error('Error fetching/storing betfair markets:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
 
