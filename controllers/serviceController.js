@@ -79,7 +79,7 @@ exports.getEvents = async (req, res) => {
         console.log(`🟡 Comparing:\n  Betfair: "${event.name}" → "${normalizedBetfairName}"\n  Sportradar: "${sre.eventName}" → "${normalizedSportradarName}"`);
 
         if (normalizedBetfairName === normalizedSportradarName) {
-          console.log(`✅ Matched: "${event.name}" == "${sre.eventName}"`);
+          console.log(`✅ Matched: "${sre.eventId}" -- ${event.name}" == "${sre.eventName}"`);
           matchedRadar = sre;
           matchedRadarIds.add(sre.eventId);
           break;
@@ -143,46 +143,42 @@ exports.getBetfairMarketByEventsId = async (req, res) => {
 
     if (!sportId || !eventId) {
       return res.status(400).json({
-        success: false,
-        message: 'Missing sportId or eventId in parameters',
+        status: 0,
+        message: 'Missing sportId or eventId',
       });
     }
 
-    // Find the eventList by FastoddsId
-    const eventList = await EventList.findOne({ FastoddsId: sportId });
-
-    if (!eventList) {
-      return res.status(404).json({
-        success: false,
-        message: 'No data found for given FastoddsId',
-      });
-    }
-
-    const events = eventList?.betfairEventList?.events || [];
-
-    const matchedEvent = events.find(e => e.event_id === eventId);
-
-    if (!matchedEvent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event ID not found under given FastoddsId',
-      });
-    }
-
-    return res.status(200).json({
-      status: 1,
-      message: 'Market data found',
-      data: matchedEvent,
+    // Find document by sportId and ensure eventId exists in marketList (for safety)
+    const marketDoc = await BetfairMarketlist.findOne({
+      FastoddsId: sportId,
+      betfair_event_id: eventId
     });
 
-  } catch (err) {
-    console.error('Error in getBetfairMarketByEventsId:', err);
+    if (!marketDoc) {
+      return res.status(404).json({
+        status: 0,
+        message: 'No market data found for the given sportId and eventId',
+      });
+    }
+
+    // No filtering — return full marketList
+    return res.status(200).json({
+      status: 1,
+      FastoddsId: marketDoc.FastoddsId,
+      sportId,
+      eventId,
+      marketList: marketDoc.marketList,
+    });
+
+  } catch (error) {
+    console.error('Error in getBetfairMarketByEventsId:', error);
     return res.status(500).json({
-      status: 0,
+      success: false,
       message: 'Internal server error',
     });
   }
 };
+
 
 
 
