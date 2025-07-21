@@ -53,13 +53,16 @@ exports.getEvents = async (req, res) => {
     const spotRadarEvents = spotRadarData.spotradardeventlist || [];
 
     const normalizeAndSort = (name) => {
+      if (!name) return '';
+    
       const teams = name
         .toLowerCase()
-        .replace(/[@]/g, 'vs') // replace @ with vs
-        .replace(/[^a-z0-9\s]/gi, '') // remove special chars
-        .split(/vs|\bat\b/)
+        .replace(/[@]| at | v[.]?s?[.]? | vs[.]?/gi, ' vs ') // normalize separators
+        .replace(/[^a-z0-9\s]/gi, '') // remove unwanted special characters
+        .split('vs') // split on "vs"
         .map(team => team.trim())
-        .sort();
+        .sort(); // sort alphabetically
+    
       return teams.join(' vs ');
     };
 
