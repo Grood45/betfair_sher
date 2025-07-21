@@ -3,7 +3,11 @@ const { Schema } = mongoose;
 
 const spotRadarEventSchema = new Schema(
   {
-    FastoddsId: String, // replaces sportId
+     FastoddsId: {
+       type: mongoose.Schema.Types.ObjectId,
+       ref: 'Sport',
+       required: true
+     },
     radarSportId: String, // replaces sportId
     spotradardeventlist: Schema.Types.Mixed
   },

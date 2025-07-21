@@ -72,7 +72,7 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
 
       // Save combined events
       await SpotRadarEvent.findOneAndUpdate(
-        { FastoddsId: new mongoose.Types.ObjectId(FastoddsId) },
+        { FastoddsId },
         {
           radarSportId: sportId,
           spotradardeventlist: combinedEvents
