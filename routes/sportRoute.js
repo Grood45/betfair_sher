@@ -6,6 +6,7 @@ const verifyToken = require('../middleware/verifyToken');
 router.get('/list', sportController.sportList);
 router.get('/event/list', sportController.getEventsList);
 router.get('/radar/event/list', sportController.fetchAndStoreSportradarEvents);
+router.get('/betfair/market/list', sportController.fetchAndStoreBetfairMarkets);
 
 
 

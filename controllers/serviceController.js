@@ -8,7 +8,7 @@ const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const EventList = require('../models/EventList'); 
 const mongoose = require('mongoose');
 const SpotRadarEvent = require('../models/SpotRadarEvent');
-
+const BetfairMarketlist = require('../models/BetfairMarketlist');
   
 
 exports.sportList = async (req, res) => {
@@ -183,5 +183,8 @@ exports.getBetfairMarketByEventsId = async (req, res) => {
     });
   }
 };
+
+
+
 
 

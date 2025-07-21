@@ -7,7 +7,7 @@ const Sport = require('../models/Sport');
 const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const EventList = require('../models/EventList'); 
 const SpotRadarEvent = require('../models/SpotRadarEvent');
-
+const BetfairMarketlist = require('../models/BetfairMarketlist');
 
 
 
@@ -413,4 +413,67 @@ exports.getEventsList = async (req, res) => {
   }
 };
 
+
+exports.fetchAndStoreBetfairMarkets = async (req, res) => {
+  try {
+  
+    const betfairAppKey = 'fslpapQyGZSmkZW3';
+    const betfairSessionToken = 'tXvPCalpouNSP2DpzapbCqNNDMLbl12iuc65vcg8Zf0=';
+
+    const allEvents = await EventList.find({}); // Fetch all events
+
+    for (const event of allEvents) {
+      const betfair_event_id = event.betfairEventList?.events?.[0]?.event_id;
+      const FastoddsId = event.FastoddsId;
+
+      if (!betfair_event_id) continue;
+
+      const response = await axios.post(
+        'https://api.betfair.com/exchange/betting/json-rpc/v1',
+        [
+          {
+            jsonrpc: '2.0',
+            method: 'SportsAPING/v1.0/listMarketCatalogue',
+            params: {
+              filter: {
+                eventIds: [betfair_event_id]
+              },
+              maxResults: '100',
+              marketProjection: ['MARKET_START_TIME', 'RUNNER_DESCRIPTION']
+            },
+            id: 1
+          }
+        ],
+        {
+          headers: {
+            'X-Application': betfairAppKey,
+            'X-Authentication': betfairSessionToken,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const marketList = response?.data?.[0]?.result || [];
+
+      if (marketList.length > 0) {
+        await BetfairMarketlist.findOneAndUpdate(
+          { betfair_event_id },
+          {
+            $set: {
+              FastoddsId,
+              betfair_event_id,
+              marketList
+            }
+          },
+          { upsert: true, new: true }
+        );
+      }
+    }
+
+    res.status(200).json({ message: 'Betfair market data stored successfully' });
+  } catch (error) {
+    console.error('Error fetching/storing betfair markets:', error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
