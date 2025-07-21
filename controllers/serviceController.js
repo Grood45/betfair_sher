@@ -167,15 +167,15 @@ exports.getBetfairMarketByEventsId = async (req, res) => {
     }
 
     return res.status(200).json({
-      success: true,
-      message: 'Event found',
+      status: 1,
+      message: 'Market data found',
       data: matchedEvent,
     });
 
   } catch (err) {
     console.error('Error in getBetfairMarketByEventsId:', err);
     return res.status(500).json({
-      success: false,
+      status: 0,
       message: 'Internal server error',
     });
   }
