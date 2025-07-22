@@ -513,7 +513,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
 
   try {
     // Step 1: Fetch all market list records
-    const allMarketRecords = await BetfairMarketlist.find({}).limit(5);
+    const allMarketRecords = await BetfairMarketlist.find({});
     if (!allMarketRecords || allMarketRecords.length === 0) {
       console.log('No market records found in DB');
       return res.status(404).json({ message: 'No market records found' });
