@@ -601,7 +601,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
 
   try {
     // Get marketIds from DB
-    const record = await BetfairMarketList.findOne({ betfair_event_id: eventId });
+    const record = await BetfairMarketlist.findOne({ betfair_event_id: eventId });
 
     if (!record || !record.marketList || record.marketList.length === 0) {
       return res.status(404).json({ message: 'No markets found for given event ID' });
