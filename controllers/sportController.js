@@ -510,23 +510,23 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
   const betfairSessionToken = req.betfairSessionToken;
 
   try {
-    // 1. Fetch all market lists from DB
+    // Step 1: Fetch all market list records
     const allMarketRecords = await BetfairMarketlist.find({});
-
     if (!allMarketRecords || allMarketRecords.length === 0) {
+      console.log('No market records found in DB');
       return res.status(404).json({ message: 'No market records found' });
     }
 
-    // 2. Extract all marketIds
+    // Step 2: Extract all marketIds
     const allMarketIds = allMarketRecords.flatMap(record =>
       record.marketList.map(m => m.marketId)
     );
-
     if (allMarketIds.length === 0) {
+      console.log('No marketIds found in records');
       return res.status(404).json({ message: 'No marketIds found' });
     }
 
-    // Helper to split into chunks of 40 (Betfair API limit)
+    // Helper: Chunk array into 20-marketId pieces
     const chunkArray = (arr, size) => {
       const result = [];
       for (let i = 0; i < arr.length; i += size) {
@@ -535,10 +535,12 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
       return result;
     };
 
-    const chunks = chunkArray(allMarketIds, 40);
+    const chunks = chunkArray(allMarketIds, 20);
     let allResults = [];
 
     for (const chunk of chunks) {
+      console.log(`Fetching market book for chunk: ${chunk.join(',')}`);
+
       const response = await axios.post(
         'https://api.betfair.com/exchange/betting/json-rpc/v1',
         [
@@ -566,12 +568,21 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
       );
 
       const results = response.data[0]?.result || [];
+      console.log(`Received ${results.length} results from Betfair API`);
       allResults.push(...results);
 
       // Save each market result
       for (const market of results) {
-        const newResult = new BetfairMarketResult({
-          eventId: '', // Optional: store eventId if you have a way to map it
+        const marketId = market.marketId;
+
+        // Try to map back to eventId (if available)
+        const record = allMarketRecords.find(record =>
+          record.marketList.some(m => m.marketId === marketId)
+        );
+        const eventId = record?.betfair_event_id || null;
+
+        const marketResult = {
+          eventId,
           marketId: market.marketId,
           marketName: market.marketName || 'Match Odds',
           status: market.status,
@@ -581,11 +592,13 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
             status: r.status,
             isWinner: r.status === 'WINNER'
           }))
-        });
+        };
+
+        console.log(`Saving market result for marketId: ${market.marketId}, eventId: ${eventId}`);
 
         await BetfairMarketResult.findOneAndUpdate(
           { marketId: market.marketId },
-          newResult.toObject(),
+          marketResult,
           { upsert: true, new: true }
         );
       }
@@ -598,7 +611,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error fetching/saving market results:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
       message: error.message,
