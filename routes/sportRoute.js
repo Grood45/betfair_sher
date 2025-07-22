@@ -9,7 +9,8 @@ router.get('/list', betfairAuthMiddleware,sportController.sportList);
 router.get('/event/list', betfairAuthMiddleware,sportController.getEventsList);
 router.get('/radar/event/list', betfairAuthMiddleware,sportController.fetchAndStoreSportradarEvents);
 router.get('/betfair/market/list',betfairAuthMiddleware, sportController.fetchAndStoreBetfairMarkets);
-router.get('/betfair/market/odds',betfairAuthMiddleware, sportController.fetchAndStoreBetfairMarketsOdds);
+router.get('/betfair/market/odds', sportController.fetchAndStoreBetfairMarketsOdds);
+router.get('/betfair/market/result', sportController.getBetfairMarketResultsByEvent);
 
 
 module.exports = router;

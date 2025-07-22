@@ -16,7 +16,7 @@ const betfairMarketOddsSchema = new mongoose.Schema({
     required: true
   }
 }, {
-  timestamps: true
+  timestamps: true,strict:false
 });
 
 module.exports = mongoose.model('BetfairMarketOdds', betfairMarketOddsSchema);

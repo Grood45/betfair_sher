@@ -10,6 +10,7 @@ const SpotRadarEvent = require('../models/SpotRadarEvent');
 const BetfairMarketlist = require('../models/BetfairMarketlist');
 const BetfairMarketOdds = require('../models/BetfairMarketOdds');
 const mongoose = require('mongoose');
+const BetfairMarketResult = require('../models/MarketResult');
 
 
 exports.fetchAndStoreSportradarEvents = async (req, res) => {
@@ -504,142 +505,96 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
 };
 
 
-exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
-  try {
-    const betfairAppKey = req.betfairAppKey;
-    const betfairSessionToken = req.betfairSessionToken;
-
-    // ✅ Get all records directly from BetfairMarketlist
-    const allMarketRecords = await BetfairMarketlist.find({});
-
-    for (const record of allMarketRecords) {
-      const { FastoddsId, betfair_event_id, marketList } = record;
-
-      if (!betfair_event_id || !FastoddsId || !Array.isArray(marketList)) {
-        console.warn(`⚠️ Skipping record with missing data: ${record._id}`);
-        continue;
-      }
-
-      const marketIds = marketList.map(m => m.marketId).filter(Boolean);
-
-      if (marketIds.length === 0) {
-        console.warn(`⚠️ No valid marketIds for event ${betfair_event_id}`);
-        continue;
-      }
-
-      console.log(`➡️ Processing Event ID: ${betfair_event_id} (FastoddsId: ${FastoddsId})`);
-
-      try {
-        // ✅ Fetch odds using marketIds
-        const oddsRes = await axios.post(
-          'https://api.betfair.com/exchange/betting/json-rpc/v1',
-          [
-            {
-              jsonrpc: '2.0',
-              method: 'SportsAPING/v1.0/listMarketBook',
-              params: {
-                marketIds,
-                priceProjection: {
-                  priceData: ['EX_BEST_OFFERS']
-                }
-              },
-              id: 1
-            }
-          ],
-          {
-            headers: {
-              'X-Application': betfairAppKey,
-              'X-Authentication': betfairSessionToken,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        const marketOdds = oddsRes?.data?.[0]?.result || [];
-
-        if (marketOdds.length > 0) {
-          // ✅ Save odds to BetfairMarketOdds collection
-          await BetfairMarketOdds.findOneAndUpdate(
-            { betfair_event_id },
-            {
-              $set: {
-                _id: new mongoose.Types.ObjectId(),
-                FastoddsId,
-                betfair_event_id,
-                marketOdds
-              }
-            },
-            { upsert: true, new: true }
-          );
-
-          console.log(`✅ Stored odds for ${marketOdds.length} markets (event ${betfair_event_id})`);
-        } else {
-          console.warn(`⚠️ No odds returned for event ${betfair_event_id}`);
-        }
-      } catch (apiError) {
-        console.error(`❌ Error fetching odds for event ${betfair_event_id}:`, apiError.message);
-      }
-    }
-
-    res.status(200).json({ message: 'Betfair market odds stored successfully from BetfairMarketlist' });
-  } catch (error) {
-    console.error('❌ Error fetching/storing betfair odds:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-
 exports.getBetfairMarketResultsByEvent = async (req, res) => {
   const betfairAppKey = req.betfairAppKey;
   const betfairSessionToken = req.betfairSessionToken;
 
-  const { eventId } = req.params;
-
-  if (!eventId) {
-    return res.status(400).json({ error: 'eventId is required' });
-  }
-
   try {
-    // Get marketIds from DB
-    const record = await BetfairMarketlist.findOne({ betfair_event_id: eventId });
+    // 1. Fetch all market lists from DB
+    const allMarketRecords = await BetfairMarketlist.find({});
 
-    if (!record || !record.marketList || record.marketList.length === 0) {
-      return res.status(404).json({ message: 'No markets found for given event ID' });
+    if (!allMarketRecords || allMarketRecords.length === 0) {
+      return res.status(404).json({ message: 'No market records found' });
     }
 
-    const marketIds = record.marketList.map(market => market.marketId);
-
-    // Fetch market books from Betfair
-    const response = await axios.post(
-      'https://api.betfair.com/exchange/betting/json-rpc/v1',
-      [
-        {
-          jsonrpc: '2.0',
-          method: 'SportsAPING/v1.0/listMarketBook',
-          params: {
-            marketIds,
-            priceProjection: {
-              priceData: ['EX_BEST_OFFERS'],
-              virtualise: true,
-              rolloverStakes: true
-            }
-          },
-          id: 1
-        }
-      ],
-      {
-        headers: {
-          'X-Application': betfairAppKey,
-          'X-Authentication': betfairSessionToken,
-          'Content-Type': 'application/json'
-        }
-      }
+    // 2. Extract all marketIds
+    const allMarketIds = allMarketRecords.flatMap(record =>
+      record.marketList.map(m => m.marketId)
     );
 
+    if (allMarketIds.length === 0) {
+      return res.status(404).json({ message: 'No marketIds found' });
+    }
+
+    // Helper to split into chunks of 40 (Betfair API limit)
+    const chunkArray = (arr, size) => {
+      const result = [];
+      for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size));
+      }
+      return result;
+    };
+
+    const chunks = chunkArray(allMarketIds, 40);
+    let allResults = [];
+
+    for (const chunk of chunks) {
+      const response = await axios.post(
+        'https://api.betfair.com/exchange/betting/json-rpc/v1',
+        [
+          {
+            jsonrpc: '2.0',
+            method: 'SportsAPING/v1.0/listMarketBook',
+            params: {
+              marketIds: chunk,
+              priceProjection: {
+                priceData: ['EX_BEST_OFFERS'],
+                virtualise: true,
+                rolloverStakes: true
+              }
+            },
+            id: 1
+          }
+        ],
+        {
+          headers: {
+            'X-Application': betfairAppKey,
+            'X-Authentication': betfairSessionToken,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const results = response.data[0]?.result || [];
+      allResults.push(...results);
+
+      // Save each market result
+      for (const market of results) {
+        const newResult = new BetfairMarketResult({
+          eventId: '', // Optional: store eventId if you have a way to map it
+          marketId: market.marketId,
+          marketName: market.marketName || 'Match Odds',
+          status: market.status,
+          runners: market.runners?.map(r => ({
+            selectionId: r.selectionId,
+            runnerName: r.runnerName || '',
+            status: r.status,
+            isWinner: r.status === 'WINNER'
+          }))
+        });
+
+        await BetfairMarketResult.findOneAndUpdate(
+          { marketId: market.marketId },
+          newResult.toObject(),
+          { upsert: true, new: true }
+        );
+      }
+    }
+
     res.status(200).json({
-      status: 1,
-      eventId:eventId,
-      result: response.data
+      success: true,
+      message: 'All market results fetched and saved',
+      data: allResults
     });
 
   } catch (error) {
@@ -648,6 +603,89 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
       success: false,
       message: error.message,
       data: error.response?.data || null
+    });
+  }
+};
+
+
+
+
+exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
+  try {
+    // Step 1: Fetch marketList from DB
+    const marketDocs = await BetfairMarketlist.find({});
+
+    const allMarkets = marketDocs.flatMap(doc =>
+      doc.marketList.map(market => ({
+        marketId: market.marketId,
+        fastOddsId: doc.FastoddsId,
+        betfair_event_id: doc.betfair_event_id
+      }))
+    );
+
+    // Chunk marketIds to max 10
+    const chunkSize = 60;
+    const chunks = [];
+    for (let i = 0; i < allMarkets.length; i += chunkSize) {
+      chunks.push(allMarkets.slice(i, i + chunkSize));
+    }
+
+    const allEnrichedResults = [];
+
+    for (const chunk of chunks) {
+      const marketIdsCsv = chunk.map(m => m.marketId).join(',');
+
+      console.log(`Fetching odds for: ${marketIdsCsv}`);
+
+      const oddsRes = await axios.post(
+        'https://exchmarket.net/exchangeapi/sports/directmarketsbook',
+        JSON.stringify(marketIdsCsv),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(JSON.stringify(marketIdsCsv))
+          }
+        }
+      );
+
+    
+      const responseArray = oddsRes.data || [];
+
+      // Enrich with fastOddsId and eventId
+      const enrichedResult = responseArray.map(item => {
+        const match = chunk.find(m => m.marketId === item.marketId);
+        return {
+          fastOddsId: match?.fastOddsId || null,
+          betfair_event_id: match?.betfair_event_id || null,
+          marketOdds:item
+        };
+      });
+
+      // Save or update each enriched result
+      for (const data of enrichedResult) {
+        await BetfairMarketOdds.findOneAndUpdate(
+          { betfair_event_id: data.betfair_event_id },
+          data,
+          { upsert: true, new: true }
+        );
+        console.log(`Saved/Updated odds for eventId: ${data.betfair_event_id}`);
+      }
+
+      allEnrichedResults.push(...enrichedResult);
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: 'Odds data saved successfully.',
+      result: allEnrichedResults
+    });
+
+  } catch (error) {
+    console.error('Error in fetchAndStoreBetfairMarketsOdds:', error.message);
+    return res.status(500).json({
+      status: 0,
+      message: 'Internal Server Error',
+      error: error
     });
   }
 };
