@@ -94,8 +94,8 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
 
 
 exports.sportList = async (req, res) => {
-  const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+  const betfairAppKey = req.betfairAppKey;
+  const betfairSessionToken = req.betfairSessionToken;
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
   const betfairHeaders = {
@@ -210,8 +210,8 @@ exports.sportList = async (req, res) => {
 
 
 exports.getEventsList = async (req, res) => {
-  const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+  const betfairAppKey = req.betfairAppKey;
+  const betfairSessionToken = req.betfairSessionToken;
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
   const axios = require('axios');
 
@@ -416,8 +416,8 @@ exports.getEventsList = async (req, res) => {
 
 exports.fetchAndStoreBetfairMarkets = async (req, res) => {
   try {
-    const betfairAppKey = 'fslpapQyGZSmkZW3';
-    const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+    const betfairAppKey = req.betfairAppKey;
+    const betfairSessionToken = req.betfairSessionToken;
 
     const allEvents = await EventList.find({});
 
@@ -506,8 +506,8 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
 
 exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
   try {
-    const betfairAppKey = 'fslpapQyGZSmkZW3';
-    const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+    const betfairAppKey = req.betfairAppKey;
+    const betfairSessionToken = req.betfairSessionToken;
 
     // ✅ Get all records directly from BetfairMarketlist
     const allMarketRecords = await BetfairMarketlist.find({});
@@ -590,8 +590,8 @@ exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
 
 
 exports.getBetfairMarketResultsByEvent = async (req, res) => {
-  const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+  const betfairAppKey = req.betfairAppKey;
+  const betfairSessionToken = req.betfairSessionToken;
 
   const { eventId } = req.params;
 
