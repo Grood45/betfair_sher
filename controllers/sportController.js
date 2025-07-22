@@ -637,8 +637,9 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     );
 
     res.status(200).json({
-      success: true,
-      marketBooks: response.data
+      status: 1,
+      eventId:eventId,
+      result: response.data
     });
 
   } catch (error) {
