@@ -12,9 +12,6 @@ const BetfairMarketOdds = require('../models/BetfairMarketOdds');
 const mongoose = require('mongoose');
 
 
-
-
-
 exports.fetchAndStoreSportradarEvents = async (req, res) => {
   try {
     const token = 'ca5822fe-b4f8-4251-b72d-b3b4bfe4b133'; // move to env in prod
@@ -588,5 +585,73 @@ exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching/storing betfair odds:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+exports.getBetfairEventMarketResults = async (req, res) => {
+  const betfairAppKey = 'fslpapQyGZSmkZW3';
+  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+
+  const { eventId } = req.params;
+
+  if (!eventId) {
+    return res.status(400).json({ error: 'eventId is required' });
+  }
+
+  try {
+    // 1. Get all marketIds from DB based on eventId
+    const markets = await BetfairMarketList.find({ eventId });
+
+    if (!markets || markets.length === 0) {
+      return res.status(404).json({ error: 'No markets found for this event' });
+    }
+
+    const marketIds = markets.map(m => m.marketId).filter(Boolean);
+
+    if (marketIds.length === 0) {
+      return res.status(404).json({ error: 'No valid marketIds found' });
+    }
+
+    // 2. Fetch market books (results) from Betfair
+    const response = await axios.post(
+      'https://api.betfair.com/exchange/betting/json-rpc/v1',
+      [
+        {
+          jsonrpc: '2.0',
+          method: 'SportsAPING/v1.0/listMarketBook',
+          params: {
+            marketIds: marketIds,
+            priceProjection: {
+              priceData: ['EX_BEST_OFFERS'],
+              virtualise: true,
+              rolloverStakes: true
+            }
+          },
+          id: 1
+        }
+      ],
+      {
+        headers: {
+          'X-Application': betfairAppKey,
+          'X-Authentication': betfairSessionToken,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: response.data
+    });
+
+  } catch (error) {
+    console.error('Error fetching Betfair market results:', error.message);
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: error.message,
+      data: error.response?.data || null
+    });
   }
 };
