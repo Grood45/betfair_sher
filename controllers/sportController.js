@@ -508,6 +508,8 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
 exports.getBetfairMarketResultsByEvent = async (req, res) => {
   const betfairAppKey = req.betfairAppKey;
   const betfairSessionToken = req.betfairSessionToken;
+  console.log('Using AppKey:', betfairAppKey);
+  console.log('Using SessionToken:', betfairSessionToken);
 
   try {
     // Step 1: Fetch all market list records
@@ -567,6 +569,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
         }
       );
 
+      console.log(JSON.stringify(response.data));
       const results = response.data[0]?.result || [];
       console.log(`Received ${results.length} results from Betfair API`);
       allResults.push(...results);
