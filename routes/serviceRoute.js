@@ -11,6 +11,7 @@ router.get('/event/list/:fastOddsId', serviceController.getEvents);
 router.get('/betfair/market/list/:sportId/:eventId', serviceController.getBetfairMarketByEventsId);
 router.get('/betfair/market/odds/:eventId', serviceController.getBetfairMarketOddsByEventsId);
 router.get('/betfair/market/odds/live/:sportId/:eventId', serviceController.liveBetfairMarketsOddsByParams);
+router.post('/betfair/market/results', serviceController.getBetfairMarketResultsByIds);
 
 
 module.exports = router;

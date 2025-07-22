@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const SpotRadarEvent = require('../models/SpotRadarEvent');
 const BetfairMarketlist = require('../models/BetfairMarketlist');
 const BetfairMarketOdds = require('../models/BetfairMarketOdds');
+const BetfairMarketResult = require('../models/MarketResult');
  
 
 exports.sportList = async (req, res) => {
@@ -268,6 +269,55 @@ exports.liveBetfairMarketsOddsByParams = async (req, res) => {
   }
 };
 
+exports.getBetfairMarketResultsByIds = async (req, res) => {
+  try {
+    const { marketId } = req.body;
+
+    if (!marketId) {
+      return res.status(400).json({
+        status: 0,
+        message: 'marketId parameter is required',
+      });
+    }
+
+    // Convert CSV string to array and clean spaces
+    const marketIdArray = marketId.split(',').map(id => id.trim());
+
+    // Limit to 30 marketIds max
+    if (marketIdArray.length > 30) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Maximum 30 market IDs are allowed per request',
+      });
+    }
+
+    // Query DB
+    const results = await BetfairMarketResult.find({
+      marketId: { $in: marketIdArray }
+    });
+
+    if (!results || results.length === 0) {
+      return res.status(404).json({
+        status: 0,
+        message: 'No market results found for the given IDs',
+      });
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: 'Market results retrieved successfully',
+      data: results
+    });
+
+  } catch (error) {
+    console.error('Error in getBetfairMarketResultsByIds:', error.message);
+    return res.status(500).json({
+      status: 0,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
 
 
 
