@@ -206,6 +206,7 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
 
     return res.status(200).json({
       status: 1,
+      message: 'Market odds found for this event and sport',
       FastoddsId: sportId,
       eventId,
       odds: oddsList,
