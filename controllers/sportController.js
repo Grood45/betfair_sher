@@ -601,7 +601,7 @@ exports.getBetfairEventMarketResults = async (req, res) => {
 
   try {
     // 1. Get all marketIds from DB based on eventId
-    const markets = await BetfairMarketList.find({ eventId });
+    const markets = await BetfairMarketlist.find({ eventId });
 
     if (!markets || markets.length === 0) {
       return res.status(404).json({ error: 'No markets found for this event' });
