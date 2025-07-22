@@ -182,9 +182,9 @@ exports.getBetfairMarketByEventsId = async (req, res) => {
 
 exports.getBetfairMarketOddsByEventsId = async (req, res) => {
   try {
-    const { sportId, eventId } = req.params;
+    const { eventId } = req.params;
 
-    if (!sportId || !eventId) {
+    if (!eventId) {
       return res.status(400).json({
         status: 0,
         message: 'Missing sportId or eventId',
@@ -194,11 +194,10 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
     // Fetch odds directly from BetfairMarketOdds using both filters
     const oddsList = await BetfairMarketOdds.find({
       betfair_event_id: eventId,
-      FastoddsId: sportId,
     });
 
     if (!oddsList || oddsList.length === 0) {
-      return res.status(404).json({
+      return res.status(400).json({
         status: 0,
         message: 'No odds found for this event and sport',
       });
@@ -207,8 +206,7 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
     return res.status(200).json({
       status: 1,
       message: 'Market odds found for this event and sport',
-      FastoddsId: sportId,
-      eventId,
+      betfair_event_id:eventId,
       odds: oddsList,
     });
 
@@ -271,58 +269,6 @@ exports.liveBetfairMarketsOddsByParams = async (req, res) => {
 };
 
 
-exports.getBetfairResultMarketBook = async (req, res) => {
-
-  const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
-
-  const { marketId } = req.params;
-
-  if (!marketId) {
-    return res.status(400).json({ error: 'marketId is required' });
-  }
-
-  try {
-    const response = await axios.post(
-      'https://api.betfair.com/exchange/betting/json-rpc/v1',
-      [
-        {
-          jsonrpc: '2.0',
-          method: 'SportsAPING/v1.0/listMarketBook',
-          params: {
-            marketIds: [marketId],
-            priceProjection: {
-              priceData: ['EX_BEST_OFFERS'],
-              virtualise: true,
-              rolloverStakes: true
-            }
-          },
-          id: 1
-        }
-      ],
-      {
-        headers: {
-          'X-Application': betfairAppKey,
-          'X-Authentication': betfairSessionToken,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    res.status(200).json({
-      success: true,
-      data: response.data
-    });
-  } catch (error) {
-    console.error('Error fetching market book:', error.message);
-
-    res.status(error.response?.status || 500).json({
-      success: false,
-      message: error.message,
-      data: error.response?.data || null
-    });
-  }
-};
 
 
 

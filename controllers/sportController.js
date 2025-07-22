@@ -665,7 +665,10 @@ exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
       for (const data of enrichedResult) {
         await BetfairMarketOdds.findOneAndUpdate(
           { betfair_event_id: data.betfair_event_id },
-          data,
+          {
+            $set: { fastOddsId: data.fastOddsId },
+            $push: { marketOdds: data.marketOdds }
+          },
           { upsert: true, new: true }
         );
         console.log(`Saved/Updated odds for eventId: ${data.betfair_event_id}`);

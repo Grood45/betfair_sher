@@ -9,7 +9,7 @@ const betfairAuthMiddleware = require('../middleware/betfairAuth');
 router.get('/sport/list', serviceController.sportList);
 router.get('/event/list/:fastOddsId', serviceController.getEvents);
 router.get('/betfair/market/list/:sportId/:eventId', serviceController.getBetfairMarketByEventsId);
-router.get('/betfair/market/odds/:sportId/:eventId', serviceController.getBetfairMarketOddsByEventsId);
+router.get('/betfair/market/odds/:eventId', serviceController.getBetfairMarketOddsByEventsId);
 router.get('/betfair/market/odds/live/:sportId/:eventId', serviceController.liveBetfairMarketsOddsByParams);
 
 
