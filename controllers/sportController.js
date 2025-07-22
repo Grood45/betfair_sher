@@ -8,6 +8,8 @@ const { generateAccessToken, generateRefreshToken } = require('../config/jwt');
 const EventList = require('../models/EventList'); 
 const SpotRadarEvent = require('../models/SpotRadarEvent');
 const BetfairMarketlist = require('../models/BetfairMarketlist');
+const BetfairMarketOdds = require('../models/BetfairMarketOdds');
+
 
 
 
