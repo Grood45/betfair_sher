@@ -9,7 +9,7 @@ router.get('/event/list/:fastOddsId', serviceController.getEvents);
 router.get('/betfair/market/list/:sportId/:eventId', serviceController.getBetfairMarketByEventsId);
 router.get('/betfair/market/odds/:sportId/:eventId', serviceController.getBetfairMarketOddsByEventsId);
 router.get('/betfair/market/odds/live/:sportId/:eventId', serviceController.liveBetfairMarketsOddsByParams);
-router.get('/betfair/results/:eventId', sportController.getBetfairEventMarketResults);
+router.get('/betfair/event/results/:eventId', sportController.getBetfairEventMarketResults);
 
 
 module.exports = router;
