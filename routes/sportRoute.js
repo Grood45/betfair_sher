@@ -7,7 +7,7 @@ router.get('/list', sportController.sportList);
 router.get('/event/list', sportController.getEventsList);
 router.get('/radar/event/list', sportController.fetchAndStoreSportradarEvents);
 router.get('/betfair/market/list', sportController.fetchAndStoreBetfairMarkets);
-
+router.get('/betfair/market/odds', sportController.fetchAndStoreBetfairMarketsOdds);
 
 
 module.exports = router;

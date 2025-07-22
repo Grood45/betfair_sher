@@ -95,7 +95,7 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
 
 exports.sportList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'z0v4Bun5NTpkXQMtsC2vlg7brezAK8NRBXuIbvlm0dQ=';
+  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
 
   const betfairHeaders = {
@@ -211,7 +211,7 @@ exports.sportList = async (req, res) => {
 
 exports.getEventsList = async (req, res) => {
   const betfairAppKey = 'fslpapQyGZSmkZW3';
-  const betfairSessionToken = 'z0v4Bun5NTpkXQMtsC2vlg7brezAK8NRBXuIbvlm0dQ=';
+  const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
   const betfairUrl = 'https://api.betfair.com/exchange/betting/json-rpc/v1';
   const axios = require('axios');
 
@@ -417,7 +417,7 @@ exports.getEventsList = async (req, res) => {
 exports.fetchAndStoreBetfairMarkets = async (req, res) => {
   try {
     const betfairAppKey = 'fslpapQyGZSmkZW3';
-    const betfairSessionToken = 'z0v4Bun5NTpkXQMtsC2vlg7brezAK8NRBXuIbvlm0dQ=';
+    const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
 
     const allEvents = await EventList.find({});
 
@@ -503,3 +503,87 @@ exports.fetchAndStoreBetfairMarkets = async (req, res) => {
   }
 };
 
+
+exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
+  try {
+    const betfairAppKey = 'fslpapQyGZSmkZW3';
+    const betfairSessionToken = 'ytglt106htQTwlgyxRksgBdgaMWY3OThxcPd/VSbhes=';
+
+    // ✅ Get all records directly from BetfairMarketlist
+    const allMarketRecords = await BetfairMarketlist.find({});
+
+    for (const record of allMarketRecords) {
+      const { FastoddsId, betfair_event_id, marketList } = record;
+
+      if (!betfair_event_id || !FastoddsId || !Array.isArray(marketList)) {
+        console.warn(`⚠️ Skipping record with missing data: ${record._id}`);
+        continue;
+      }
+
+      const marketIds = marketList.map(m => m.marketId).filter(Boolean);
+
+      if (marketIds.length === 0) {
+        console.warn(`⚠️ No valid marketIds for event ${betfair_event_id}`);
+        continue;
+      }
+
+      console.log(`➡️ Processing Event ID: ${betfair_event_id} (FastoddsId: ${FastoddsId})`);
+
+      try {
+        // ✅ Fetch odds using marketIds
+        const oddsRes = await axios.post(
+          'https://api.betfair.com/exchange/betting/json-rpc/v1',
+          [
+            {
+              jsonrpc: '2.0',
+              method: 'SportsAPING/v1.0/listMarketBook',
+              params: {
+                marketIds,
+                priceProjection: {
+                  priceData: ['EX_BEST_OFFERS']
+                }
+              },
+              id: 1
+            }
+          ],
+          {
+            headers: {
+              'X-Application': betfairAppKey,
+              'X-Authentication': betfairSessionToken,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const marketOdds = oddsRes?.data?.[0]?.result || [];
+
+        if (marketOdds.length > 0) {
+          // ✅ Save odds to BetfairMarketOdds collection
+          await BetfairMarketOdds.findOneAndUpdate(
+            { betfair_event_id },
+            {
+              $set: {
+                _id: new mongoose.Types.ObjectId(),
+                FastoddsId,
+                betfair_event_id,
+                marketOdds
+              }
+            },
+            { upsert: true, new: true }
+          );
+
+          console.log(`✅ Stored odds for ${marketOdds.length} markets (event ${betfair_event_id})`);
+        } else {
+          console.warn(`⚠️ No odds returned for event ${betfair_event_id}`);
+        }
+      } catch (apiError) {
+        console.error(`❌ Error fetching odds for event ${betfair_event_id}:`, apiError.message);
+      }
+    }
+
+    res.status(200).json({ message: 'Betfair market odds stored successfully from BetfairMarketlist' });
+  } catch (error) {
+    console.error('❌ Error fetching/storing betfair odds:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
