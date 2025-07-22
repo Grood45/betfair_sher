@@ -9,7 +9,8 @@ const EventList = require('../models/EventList');
 const mongoose = require('mongoose');
 const SpotRadarEvent = require('../models/SpotRadarEvent');
 const BetfairMarketlist = require('../models/BetfairMarketlist');
-  
+const BetfairMarketOdds = require('../models/BetfairMarketOdds');
+ 
 
 exports.sportList = async (req, res) => {
   try {
@@ -174,6 +175,46 @@ exports.getBetfairMarketByEventsId = async (req, res) => {
     console.error('Error in getBetfairMarketByEventsId:', error);
     return res.status(500).json({
       success: false,
+      message: 'Internal server error',
+    });
+  }
+};
+
+exports.getBetfairMarketOddsByEventsId = async (req, res) => {
+  try {
+    const { sportId, eventId } = req.params;
+
+    if (!sportId || !eventId) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Missing sportId or eventId',
+      });
+    }
+
+    // Fetch odds directly from BetfairMarketOdds using both filters
+    const oddsList = await BetfairMarketOdds.find({
+      betfair_event_id: eventId,
+      FastoddsId: sportId,
+    });
+
+    if (!oddsList || oddsList.length === 0) {
+      return res.status(404).json({
+        status: 0,
+        message: 'No odds found for this event and sport',
+      });
+    }
+
+    return res.status(200).json({
+      status: 1,
+      FastoddsId: sportId,
+      eventId,
+      odds: oddsList,
+    });
+
+  } catch (error) {
+    console.error('Error in getBetfairMarketOddsByEventsId:', error);
+    return res.status(500).json({
+      status: 0,
       message: 'Internal server error',
     });
   }
