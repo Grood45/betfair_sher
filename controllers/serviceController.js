@@ -230,6 +230,7 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
         marketId: market.marketId,
         marketName: matchedMarket.marketName || 'Match Odds',
         inplay: market.inplay,
+        status: market.status,
         numberOfWinners: market.numberOfWinners,
         numberOfRunners: market.numberOfRunners,
         numberOfActiveRunners: market.numberOfActiveRunners,
