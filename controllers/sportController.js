@@ -516,7 +516,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     const allMarketRecords = await BetfairMarketlist.find({});
     if (!allMarketRecords || allMarketRecords.length === 0) {
       console.log('No market records found in DB');
-      return res.status(404).json({ message: 'No market records found' });
+      return res.status(400).json({ message: 'No market records found' });
     }
 
     // Step 2: Extract all marketIds
@@ -525,7 +525,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     );
     if (allMarketIds.length === 0) {
       console.log('No marketIds found in records');
-      return res.status(404).json({ message: 'No marketIds found' });
+      return res.status(400).json({ message: 'No marketIds found' });
     }
 
     // Helper: Chunk array into 20-marketId pieces
@@ -537,7 +537,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
       return result;
     };
 
-    const chunks = chunkArray(allMarketIds, 20);
+    const chunks = chunkArray(allMarketIds, 30);
     let allResults = [];
 
     for (const chunk of chunks) {
