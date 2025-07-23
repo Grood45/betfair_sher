@@ -211,9 +211,13 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
         marketListMap[market.marketId] = {
           marketName: market.marketName,
           runnersMap: (market.runners || []).reduce((map, runner) => {
-            map[runner.selectionId] = runner.runnerName;
+              map[runner.selectionId] = {
+              runnerName: runner.runnerName,
+              sortPriority: runner.sortPriority
+            };
             return map;
           }, {})
+
         };
       }
     }
@@ -229,17 +233,24 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
         numberOfWinners: market.numberOfWinners,
         numberOfRunners: market.numberOfRunners,
         numberOfActiveRunners: market.numberOfActiveRunners,
+        betDelay: market.betDelay,
+        crossMatching: market.crossMatching,
+        complete: market.complete,
+        isMarketDataDelayed: market.isMarketDataDelayed,
+        runnersVoidable: market.runnersVoidable,
         lastMatchTime: market.lastMatchTime,
         totalMatched: market.totalMatched,
         totalAvailable: market.totalAvailable,
         runners: (market.runners || []).map(runner => ({
-          runnerName: matchedMarket.runnersMap?.[runner.selectionId] || null,
           selectionId: runner.selectionId,
+          runnerName: matchedMarket.runnersMap?.[runner.selectionId].runnerName || null,
           status: runner.status,
+          sortPriority: matchedMarket.runnersMap?.[runner.selectionId].sortPriority || null,
           totalMatched: runner.totalMatched,
           availableToBack: runner.ex?.availableToBack || [],
           availableToLay: runner.ex?.availableToLay || []
         }))
+        
       };
     });
     
@@ -313,46 +324,100 @@ exports.liveBetfairMarketsOddsByParams = async (req, res) => {
 
 exports.getBetfairMarketResultsByIds = async (req, res) => {
   try {
-    const { marketId } = req.body;
+    const { marketIds } = req.body; // Expecting: "1.234,1.567,..."
 
-    if (!marketId) {
+    if (!marketIds || typeof marketIds !== 'string') {
       return res.status(400).json({
         status: 0,
-        message: 'marketId parameter is required',
+        message: 'marketIds string is required in request body',
       });
     }
 
-    // Convert CSV string to array and clean spaces
-    const marketIdArray = marketId.split(',').map(id => id.trim());
+    const marketIdArray = marketIds
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id);
 
-    // Limit to 30 marketIds max
+    if (marketIdArray.length === 0) {
+      return res.status(400).json({
+        status: 0,
+        message: 'No valid marketIds provided',
+      });
+    }
+
     if (marketIdArray.length > 30) {
       return res.status(400).json({
         status: 0,
-        message: 'Maximum 30 market IDs are allowed per request',
+        message: 'Maximum 30 marketIds are allowed per request',
       });
     }
 
-    // Query DB
-    const results = await BetfairMarketResult.find({
-      marketId: { $in: marketIdArray }
-    });
+    const results = await BetfairMarketResult.find(
+      { marketId: { $in: marketIdArray } },
+      {
+        _id: 0,
+        marketId: 1,
+        betfair_event_id: 1,
+        runners: 1
+      }
+    );
 
     if (!results || results.length === 0) {
       return res.status(404).json({
         status: 0,
-        message: 'No market results found for the given IDs',
+        message: 'No market results found for the provided marketIds',
       });
     }
+
+    const eventIds = [...new Set(results.map(r => r.betfair_event_id))];
+
+    const marketListDocs = await BetfairMarketlist.find({ betfair_event_id: { $in: eventIds } });
+
+    const marketMap = {};
+    for (const doc of marketListDocs) {
+      if (doc.marketList) {
+        for (const market of doc.marketList) {
+          marketMap[market.marketId] = {
+            marketName: market.marketName,
+            runnersMap: (market.runners || []).reduce((acc, runner) => {
+              acc[runner.selectionId] = {
+                runnerName: runner.runnerName,
+                sortPriority: runner.sortPriority
+              };
+              return acc;
+            }, {})
+          };
+        }
+      }
+    }
+
+    const enrichedResults = results.map(result => {
+      const marketData = marketMap[result.marketId] || {};
+      return {
+        marketId: result.marketId,
+        betfair_event_id: result.betfair_event_id,
+        marketName: marketData.marketName || null,
+        runners: (result.runners || []).map(runner => {
+          const runnerMeta = marketData.runnersMap?.[runner.selectionId] || {};
+          return {
+            selectionId: runner.selectionId,
+            runnerName: runnerMeta.runnerName || null,
+            sortPriority: runnerMeta.sortPriority || null,
+            status: runner.status,
+            isWinner: runner.isWinner
+          };
+        })
+      };
+    });
 
     return res.status(200).json({
       status: 1,
       message: 'Market results retrieved successfully',
-      data: results
+      data: enrichedResults
     });
 
   } catch (error) {
-    console.error('Error in getBetfairMarketResultsByIds:', error.message);
+    console.error('Error in getBetfairMarketResultsByMarketIds:', error.message);
     return res.status(500).json({
       status: 0,
       message: 'Internal server error',
