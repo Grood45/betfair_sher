@@ -221,16 +221,28 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
     // Enrich marketOdds with top-level marketName and runnerName
     const enrichedMarketOdds = oddsDoc.marketOdds.map(market => {
       const matchedMarket = marketListMap[market.marketId] || {};
-
+    
       return {
+        marketId: market.marketId,
         marketName: matchedMarket.marketName || 'Match Odds',
-        ...market,
+        inplay: market.inplay,
+        numberOfWinners: market.numberOfWinners,
+        numberOfRunners: market.numberOfRunners,
+        numberOfActiveRunners: market.numberOfActiveRunners,
+        lastMatchTime: market.lastMatchTime,
+        totalMatched: market.totalMatched,
+        totalAvailable: market.totalAvailable,
         runners: (market.runners || []).map(runner => ({
           runnerName: matchedMarket.runnersMap?.[runner.selectionId] || null,
-          ...runner
+          selectionId: runner.selectionId,
+          status: runner.status,
+          totalMatched: runner.totalMatched,
+          availableToBack: runner.ex?.availableToBack || [],
+          availableToLay: runner.ex?.availableToLay || []
         }))
       };
     });
+    
 
     return res.status(200).json({
       status: 1,
