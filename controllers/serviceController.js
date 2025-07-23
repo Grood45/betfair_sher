@@ -403,7 +403,6 @@ exports.getBetfairMarketResultsByEventId = async (req, res) => {
       return {
         marketId: result.marketId,
         marketName: marketData.marketName || null,
-        betfair_event_id: result.betfair_event_id,
         runners: (result.runners || []).map(runner => {
           const runnerMeta = marketData.runnersMap?.[runner.selectionId] || {};
           return {
