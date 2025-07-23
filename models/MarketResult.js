@@ -21,6 +21,7 @@ const RunnerSchema = new mongoose.Schema({
 });
 
 const MarketResultSchema = new mongoose.Schema({
+  betfair_event_id: String,
   marketId: {
     type: String,
     required: true,
