@@ -349,6 +349,77 @@ exports.getBetfairMarketResultsByIds = async (req, res) => {
   }
 };
 
+exports.getBetfairMarketResultsByEventId = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({
+        status: 0,
+        message: 'eventId parameter is required',
+      });
+    }
+
+    // Fetch all market results for the given eventId
+    const results = await BetfairMarketResult.find({ betfair_event_id: eventId });
+
+    if (!results || results.length === 0) {
+      return res.status(404).json({
+        status: 0,
+        message: 'No market result found for the given eventId',
+      });
+    }
+
+    // Fetch market list for enrichment
+    const marketListDoc = await BetfairMarketlist.findOne({ betfair_event_id: eventId });
+
+    const marketMap = {};
+    if (marketListDoc && marketListDoc.marketList) {
+      for (const market of marketListDoc.marketList) {
+        marketMap[market.marketId] = {
+          marketName: market.marketName,
+          runnersMap: (market.runners || []).reduce((acc, runner) => {
+            acc[runner.selectionId] = runner.runnerName;
+            return acc;
+          }, {})
+        };
+      }
+    }
+
+    // Enrich each result with marketName and runnerName
+    const enrichedResults = results.map(result => {
+      const marketData = marketMap[result.marketId] || {};
+      return {
+        marketName: marketData.marketName || null,
+        ...result._doc,
+        runners: (result.runners || []).map(runner => ({
+          runnerName: marketData.runnersMap?.[runner.selectionId] || null,
+          selectionId:runner.selectionId,
+          status:runner.status,
+          isWinner:runner.isWinner
+        }))
+      };
+    });
+
+    return res.status(200).json({
+      status: 1,
+      message: 'Market results retrieved successfully',
+      betfair_event_id: eventId,
+      data: enrichedResults
+    });
+
+  } catch (error) {
+    console.error('Error in getBetfairMarketResultsByEventId:', error.message);
+    return res.status(500).json({
+      status: 0,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+
+
 
 
 
