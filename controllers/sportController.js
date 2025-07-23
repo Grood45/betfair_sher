@@ -512,23 +512,54 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
   console.log('Using SessionToken:', betfairSessionToken);
 
   try {
-    // Step 1: Fetch all market list records
     const allMarketRecords = await BetfairMarketlist.find({});
     if (!allMarketRecords || allMarketRecords.length === 0) {
-      console.log('No market records found in DB');
       return res.status(404).json({ message: 'No market records found' });
     }
 
-    // Step 2: Extract all marketIds
     const allMarketIds = allMarketRecords.flatMap(record =>
       record.marketList.map(m => m.marketId)
     );
+
     if (allMarketIds.length === 0) {
-      console.log('No marketIds found in records');
       return res.status(404).json({ message: 'No marketIds found' });
     }
 
-    // Helper: Chunk array into 20-marketId pieces
+    // Fetch runner names from listMarketCatalogue
+    const catalogueResponse = await axios.post(
+      'https://api.betfair.com/exchange/betting/json-rpc/v1',
+      [
+        {
+          jsonrpc: '2.0',
+          method: 'SportsAPING/v1.0/listMarketCatalogue',
+          params: {
+            filter: {
+              marketIds: allMarketIds
+            },
+            marketProjection: ['RUNNER_DESCRIPTION'],
+            maxResults: allMarketIds.length
+          },
+          id: 1
+        }
+      ],
+      {
+        headers: {
+          'X-Application': betfairAppKey,
+          'X-Authentication': betfairSessionToken,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    // Create map of runner names
+    const runnerNameMap = new Map();
+    const marketCatalogueList = catalogueResponse.data[0]?.result || [];
+    marketCatalogueList.forEach(market => {
+      market.runners.forEach(runner => {
+        runnerNameMap.set(`${market.marketId}_${runner.selectionId}`, runner.runnerName);
+      });
+    });
+
     const chunkArray = (arr, size) => {
       const result = [];
       for (let i = 0; i < arr.length; i += size) {
@@ -569,16 +600,13 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
         }
       );
 
-      console.log(JSON.stringify(response.data));
       const results = response.data[0]?.result || [];
       console.log(`Received ${results.length} results from Betfair API`);
       allResults.push(...results);
 
-      // Save each market result
       for (const market of results) {
         const marketId = market.marketId;
 
-        // Try to map back to eventId (if available)
         const record = allMarketRecords.find(record =>
           record.marketList.some(m => m.marketId === marketId)
         );
@@ -586,12 +614,13 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
 
         const marketResult = {
           eventId,
+          betfair_event_id: eventId,
           marketId: market.marketId,
           marketName: market.marketName || 'Match Odds',
           status: market.status,
           runners: market.runners?.map(r => ({
             selectionId: r.selectionId,
-            runnerName: r.runnerName || '',
+            runnerName: runnerNameMap.get(`${market.marketId}_${r.selectionId}`) || '',
             status: r.status,
             isWinner: r.status === 'WINNER'
           }))
@@ -622,6 +651,7 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     });
   }
 };
+
 
 
 
