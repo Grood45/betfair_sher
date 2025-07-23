@@ -361,7 +361,15 @@ exports.getBetfairMarketResultsByEventId = async (req, res) => {
     }
 
     // Fetch all market results for the given eventId
-    const results = await BetfairMarketResult.find({ betfair_event_id: eventId });
+    const results = await BetfairMarketResult.find(
+      { betfair_event_id: eventId },
+      {
+        _id: 0,
+        marketId: 1,
+        betfair_event_id: 1,
+        runners: 1 // include runners if needed
+      }
+    );
 
     if (!results || results.length === 0) {
       return res.status(404).json({
@@ -379,7 +387,10 @@ exports.getBetfairMarketResultsByEventId = async (req, res) => {
         marketMap[market.marketId] = {
           marketName: market.marketName,
           runnersMap: (market.runners || []).reduce((acc, runner) => {
-            acc[runner.selectionId] = runner.runnerName;
+            acc[runner.selectionId] = {
+              runnerName: runner.runnerName,
+              sortPriority: runner.sortPriority
+            };
             return acc;
           }, {})
         };
@@ -390,14 +401,19 @@ exports.getBetfairMarketResultsByEventId = async (req, res) => {
     const enrichedResults = results.map(result => {
       const marketData = marketMap[result.marketId] || {};
       return {
+        marketId: result.marketId,
         marketName: marketData.marketName || null,
-        ...result._doc,
-        runners: (result.runners || []).map(runner => ({
-          runnerName: marketData.runnersMap?.[runner.selectionId] || null,
-          selectionId:runner.selectionId,
-          status:runner.status,
-          isWinner:runner.isWinner
-        }))
+        betfair_event_id: result.betfair_event_id,
+        runners: (result.runners || []).map(runner => {
+          const runnerMeta = marketData.runnersMap?.[runner.selectionId] || {};
+          return {
+            selectionId: runner.selectionId,
+            runnerName: runnerMeta.runnerName || null,
+            sortPriority: runnerMeta.sortPriority || null,
+            status: runner.status,
+            isWinner: runner.isWinner
+          };
+        })
       };
     });
 
