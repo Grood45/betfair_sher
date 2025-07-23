@@ -223,7 +223,7 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
       const matchedMarket = marketListMap[market.marketId] || {};
 
       return {
-        marketName: matchedMarket.marketName || null,
+        marketName: matchedMarket.marketName || 'Match Odds',
         ...market,
         runners: (market.runners || []).map(runner => ({
           runnerName: matchedMarket.runnersMap?.[runner.selectionId] || null,
