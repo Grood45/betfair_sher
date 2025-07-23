@@ -210,6 +210,7 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
       for (const market of marketListDoc.marketList) {
         marketListMap[market.marketId] = {
           marketName: market.marketName,
+          marketStartTime: market.marketStartTime,
           runnersMap: (market.runners || []).reduce((map, runner) => {
               map[runner.selectionId] = {
               runnerName: runner.runnerName,
@@ -229,6 +230,7 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
       return {
         marketId: market.marketId,
         marketName: matchedMarket.marketName || 'Match Odds',
+        marketStartTime: matchedMarket.marketStartTime || null,
         inplay: market.inplay,
         status: market.status,
         numberOfWinners: market.numberOfWinners,
