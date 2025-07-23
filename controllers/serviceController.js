@@ -188,27 +188,55 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
     if (!eventId) {
       return res.status(400).json({
         status: 0,
-        message: 'Missing sportId or eventId',
+        message: 'Missing eventId',
       });
     }
 
-    // Fetch odds directly from BetfairMarketOdds using both filters
-    const oddsList = await BetfairMarketOdds.find({
-      betfair_event_id: eventId,
-    });
+    // Fetch BetfairMarketOdds by eventId
+    const oddsDoc = await BetfairMarketOdds.findOne({ betfair_event_id: eventId });
 
-    if (!oddsList || oddsList.length === 0) {
+    if (!oddsDoc || !oddsDoc.marketOdds || oddsDoc.marketOdds.length === 0) {
       return res.status(400).json({
         status: 0,
-        message: 'No odds found for this event and sport',
+        message: 'No odds found for this event',
       });
     }
+
+    // Fetch corresponding BetfairMarketlist
+    const marketListDoc = await BetfairMarketlist.findOne({ betfair_event_id: eventId });
+
+    const marketListMap = {};
+    if (marketListDoc && marketListDoc.marketList) {
+      for (const market of marketListDoc.marketList) {
+        marketListMap[market.marketId] = {
+          marketName: market.marketName,
+          runnersMap: (market.runners || []).reduce((map, runner) => {
+            map[runner.selectionId] = runner.runnerName;
+            return map;
+          }, {})
+        };
+      }
+    }
+
+    // Enrich marketOdds with top-level marketName and runnerName
+    const enrichedMarketOdds = oddsDoc.marketOdds.map(market => {
+      const matchedMarket = marketListMap[market.marketId] || {};
+
+      return {
+        marketName: matchedMarket.marketName || null,
+        ...market,
+        runners: (market.runners || []).map(runner => ({
+          runnerName: matchedMarket.runnersMap?.[runner.selectionId] || null,
+          ...runner
+        }))
+      };
+    });
 
     return res.status(200).json({
       status: 1,
-      message: 'Market odds found for this event and sport',
-      betfair_event_id:eventId,
-      odds: oddsList,
+      message: 'Market odds found for this event',
+      betfair_event_id: eventId,
+      marketOdds: enrichedMarketOdds
     });
 
   } catch (error) {
@@ -219,6 +247,8 @@ exports.getBetfairMarketOddsByEventsId = async (req, res) => {
     });
   }
 };
+
+
 
 exports.liveBetfairMarketsOddsByParams = async (req, res) => {
   try {
