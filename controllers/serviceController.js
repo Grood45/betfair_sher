@@ -17,9 +17,34 @@ exports.sportList = async (req, res) => {
   try {
     const sports = await Sport.find().sort({ position: 1 });
 
+    const modifiedSports = sports.map((sport) => {
+      const sportObj = sport.toObject(); // Convert to plain JS object
+
+      // Flatten nested betfair & sportradar fields
+      const betfair = sportObj.betfairSportList?.eventType || {};
+      const sportradar = sportObj.sportradarSportList || {};
+
+      sportObj.betfair_sport_id = betfair.id || 0;
+      sportObj.betfair_market_count = betfair.marketCount || 0;
+      sportObj.sportradar_sport_id = sportradar.sportId || 0;
+      sportObj.status = sportradar.status || '';
+
+      // Remove unwanted nested objects
+      delete sportObj.betfairSportList;
+      delete sportObj.sportradarSportList;
+
+      // Remove unwanted fields
+      delete sportObj.timestamp;
+      delete sportObj.createdAt;
+      delete sportObj.updatedAt;
+      delete sportObj.__v;
+
+      return sportObj;
+    });
+
     return res.status(200).json({
       message: 'All sports fetched successfully',
-      data: sports
+      data: modifiedSports
     });
   } catch (error) {
     console.error('Error fetching sports:', error.message);
@@ -29,6 +54,7 @@ exports.sportList = async (req, res) => {
     });
   }
 };
+
 
 
 
