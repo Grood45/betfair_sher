@@ -28,7 +28,8 @@ exports.sportList = async (req, res) => {
       sportObj.betfair_market_count = betfair.marketCount || 0;
       sportObj.sportradar_sport_id = sportradar.sportId || 0;
       sportObj.status = sportradar.status || '';
-
+      sportObj.minBetLimit = sportObj.minBet;
+      sportObj.maxBetLimit = sportObj.maxBet;
       // Remove unwanted nested objects
       delete sportObj.betfairSportList;
       delete sportObj.sportradarSportList;
@@ -38,6 +39,8 @@ exports.sportList = async (req, res) => {
       delete sportObj.createdAt;
       delete sportObj.updatedAt;
       delete sportObj.__v;
+      delete sportObj.minBet;
+      delete sportObj.maxBet;
 
       return sportObj;
     });
