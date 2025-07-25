@@ -25,9 +25,10 @@ exports.sportList = async (req, res) => {
       const sportradar = sportObj.sportradarSportList || {};
 
       sportObj.betfair_sport_id = betfair.id || 0;
-      sportObj.betfair_market_count = betfair.marketCount || 0;
+      sportObj.betfair_market_count = sportObj.betfairSportList.marketCount || 0;
       sportObj.sportradar_sport_id = sportradar.sportId || 0;
       sportObj.status = sportradar.status || '';
+      sportObj.isBettingEnabled = true;
       sportObj.minBetLimit = sportObj.minBet;
       sportObj.maxBetLimit = sportObj.maxBet;
       // Remove unwanted nested objects
@@ -73,7 +74,11 @@ exports.getEvents = async (req, res) => {
 
     const objectId = new mongoose.Types.ObjectId(fastOddsId);
 
-    const data = await EventList.findOne({ FastoddsId: objectId }).sort({ timestamp: -1 });
+    const data = await EventList.findOne({ FastoddsId: objectId })
+    .sort({ timestamp: -1 })
+    .populate('FastoddsId', 'sportName') // This fetches only the 'sportName' field from Sport
+    .exec();
+
     const spotRadarData = await SpotRadarEvent.findOne({ FastoddsId: objectId });
 
     if (!data || !spotRadarData) {
@@ -118,6 +123,7 @@ exports.getEvents = async (req, res) => {
       }
 
       return {
+        sportName: data.FastoddsId?.sportName || 'Unknown',
         event_name: event.name,
         event_date: event.event_date,
         status: matchedRadar?.status || 0,
