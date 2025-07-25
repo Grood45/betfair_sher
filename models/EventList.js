@@ -11,11 +11,7 @@ const EventListSchema = new mongoose.Schema({
     message: String,
     events: [mongoose.Schema.Types.Mixed]
   },
-  sportradarEventList: {
-    isFound: Number,
-    message: String,
-    result: [mongoose.Schema.Types.Mixed]
-  },
+
   status: { type: Number, default: 1 },
   timestamp: { type: Date, default: Date.now }
 });

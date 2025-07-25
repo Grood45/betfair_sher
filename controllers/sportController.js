@@ -382,14 +382,7 @@ exports.getEventsList = async (req, res) => {
               message,
               events: enrichedEvents
             },
-            timestamp: new Date()
-          },
-          $setOnInsert: {
-            sportradarEventList: {
-              isFound: 0,
-              message: 'Sportradar events not fetched yet',
-              events: []
-            },
+            timestamp: new Date(),
             status: 1
           }
         },
