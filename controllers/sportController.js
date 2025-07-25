@@ -65,6 +65,8 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
           );
 
           const events = eventResponse?.data?.sports || [];
+          console.log("eventList===>",events);
+          
           console.log(`Fetched ${events.length} events (inplay: ${isInplay}) from page ${pageNo}`);
 
           if (events.length === 0) break;
