@@ -16,11 +16,7 @@ const BetfairMarketResult = require('../models/MarketResult');
 exports.fetchAndStoreSportradarEvents = async (req, res) => {
   try {
     const token = 'ca5822fe-b4f8-4251-b72d-b3b4bfe4b133'; // move to env in prod
-    // const sports = await Sport.find({}); // Get all sports
-
-    const sports = await Sport.find({
-      sportName: "Tennis"
-    });
+    const sports = await Sport.find({}); // Get all sports
 
     for (const sport of sports) {
       const sportId = sport?.sportradarSportList?.sportId;
@@ -65,8 +61,6 @@ exports.fetchAndStoreSportradarEvents = async (req, res) => {
           );
 
           const events = eventResponse?.data?.sports || [];
-          console.log("eventList===>",events);
-          
           console.log(`Fetched ${events.length} events (inplay: ${isInplay}) from page ${pageNo}`);
 
           if (events.length === 0) break;
@@ -223,12 +217,7 @@ exports.getEventsList = async (req, res) => {
   const axios = require('axios');
 
   try {
-    // const allSports = await Sport.find({ betfairSportList: { $ne: null } });
-    const allSports = await Sport.find({
-      betfairSportList: { $ne: null },
-      sportName: "Tennis"
-    });
-
+    const allSports = await Sport.find({ betfairSportList: { $ne: null }});
 
     for (const sport of allSports) {
       const eventTypeId = sport.betfairSportList?.eventType?.id;
@@ -259,14 +248,10 @@ exports.getEventsList = async (req, res) => {
 
       try {
         const eventRes = await axios.post(betfairUrl, eventPayload, { headers });
-        console.log("eventRes===>",eventRes);
-
         eventList = eventRes.data[0]?.result || [];
         if (eventList.length > 0) {
           isFound = 1;
           message = 'Events fetched successfully';
-          console.log("eventList===>",eventList);
-          
         }
       } catch (error) {
         console.error('Error fetching events:', error.message);
@@ -300,7 +285,6 @@ exports.getEventsList = async (req, res) => {
         let marketOdds = null;
 
         try {
-          // Fetch marketCatalogue
           const marketPayload = [{
             jsonrpc: '2.0',
             method: 'SportsAPING/v1.0/listMarketCatalogue',
@@ -320,7 +304,6 @@ exports.getEventsList = async (req, res) => {
           if (catalogueResult.length > 0) {
             marketCatalogue = catalogueResult[0];
 
-            // Fetch odds for the market
             const oddsPayload = [{
               jsonrpc: '2.0',
               method: 'SportsAPING/v1.0/listMarketBook',
@@ -343,7 +326,6 @@ exports.getEventsList = async (req, res) => {
           console.error(`Market data fetch failed for event ${event.id}:`, err.message);
         }
 
-
         let cleanedMarketOdds = 0;
 
         if (Array.isArray(marketOdds)) {
@@ -364,9 +346,9 @@ exports.getEventsList = async (req, res) => {
         } else {
           cleanedMarketOdds = 0;
         }
-        // Build enriched event object
+
         enrichedEvents.push({
-          sportId:eventTypeId || 0,
+          sportId: eventTypeId || 0,
           event_id: event.id,
           name: event.name,
           event_date: event.openDate,
@@ -379,43 +361,40 @@ exports.getEventsList = async (req, res) => {
           score: true,
           tv: false,
           total_matched: Array.isArray(marketCatalogue)
-          ? marketCatalogue[0]?.totalMatched || 0
-          : marketCatalogue?.totalMatched || 0,
+            ? marketCatalogue[0]?.totalMatched || 0
+            : marketCatalogue?.totalMatched || 0,
           position: 1,
           market_count: 3,
           competition: Array.isArray(marketCatalogue)
             ? marketCatalogue[0]?.competition || 0
             : marketCatalogue?.competition || 0,
-            marketOdds:cleanedMarketOdds
+          marketOdds: cleanedMarketOdds
         });
       }
 
-      // STEP 4: Save to DB
-      const existing = await EventList.findOne({ sportId: sport._id });
-
-      const eventData = {
-        isFound,
-        message,
-        events: enrichedEvents
-      };
-
-      if (existing) {
-        existing.betfairEventList = eventData;
-        existing.timestamp = new Date();
-        await existing.save();
-      } else {
-        const newEventList = new EventList({
-          FastoddsId: sport._id,
-          betfairEventList: eventData,
-          sportradarEventList: {
-            isFound: 0,
-            message: 'Sportradar events not fetched yet',
-            events: []
+      // ✅ STEP 4: UPSERT into DB
+      await EventList.updateOne(
+        { FastoddsId: sport._id },
+        {
+          $set: {
+            betfairEventList: {
+              isFound,
+              message,
+              events: enrichedEvents
+            },
+            timestamp: new Date()
           },
-          status: 1
-        });
-        await newEventList.save();
-      }
+          $setOnInsert: {
+            sportradarEventList: {
+              isFound: 0,
+              message: 'Sportradar events not fetched yet',
+              events: []
+            },
+            status: 1
+          }
+        },
+        { upsert: true }
+      );
     }
 
     return res.status(200).json({ message: 'Betfair event list synced successfully for all sports.' });
@@ -428,6 +407,7 @@ exports.getEventsList = async (req, res) => {
     });
   }
 };
+
 
 
 exports.fetchAndStoreBetfairMarkets = async (req, res) => {
@@ -638,6 +618,9 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     });
   }
 };
+
+
+
 
 
 exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
