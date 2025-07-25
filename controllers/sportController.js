@@ -217,7 +217,11 @@ exports.getEventsList = async (req, res) => {
   const axios = require('axios');
 
   try {
-    const allSports = await Sport.find({ betfairSportList: { $ne: null } });
+    // const allSports = await Sport.find({ betfairSportList: { $ne: null } });
+    const allSports = await Sport.find({
+      betfairSportList: { $ne: null },
+      sportName: "Tennis"
+    });
 
     for (const sport of allSports) {
       const eventTypeId = sport.betfairSportList?.eventType?.id;
@@ -252,6 +256,8 @@ exports.getEventsList = async (req, res) => {
         if (eventList.length > 0) {
           isFound = 1;
           message = 'Events fetched successfully';
+          console.log(eventList);
+          
         }
       } catch (error) {
         console.error('Error fetching events:', error.message);
