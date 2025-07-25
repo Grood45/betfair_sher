@@ -222,7 +222,7 @@ exports.getEventsList = async (req, res) => {
       betfairSportList: { $ne: null },
       sportName: "Tennis"
     });
-    
+
 
     for (const sport of allSports) {
       const eventTypeId = sport.betfairSportList?.eventType?.id;
@@ -257,7 +257,7 @@ exports.getEventsList = async (req, res) => {
         if (eventList.length > 0) {
           isFound = 1;
           message = 'Events fetched successfully';
-          console.log(eventList);
+          console.log("eventList",eventList);
           
         }
       } catch (error) {
