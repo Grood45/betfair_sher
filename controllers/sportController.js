@@ -16,7 +16,11 @@ const BetfairMarketResult = require('../models/MarketResult');
 exports.fetchAndStoreSportradarEvents = async (req, res) => {
   try {
     const token = 'ca5822fe-b4f8-4251-b72d-b3b4bfe4b133'; // move to env in prod
-    const sports = await Sport.find({}); // Get all sports
+    // const sports = await Sport.find({}); // Get all sports
+
+    const sports = await Sport.find({
+      sportName: "Tennis"
+    });
 
     for (const sport of sports) {
       const sportId = sport?.sportradarSportList?.sportId;
@@ -632,9 +636,6 @@ exports.getBetfairMarketResultsByEvent = async (req, res) => {
     });
   }
 };
-
-
-
 
 
 exports.fetchAndStoreBetfairMarketsOdds = async (req, res) => {
