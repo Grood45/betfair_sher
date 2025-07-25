@@ -253,11 +253,13 @@ exports.getEventsList = async (req, res) => {
 
       try {
         const eventRes = await axios.post(betfairUrl, eventPayload, { headers });
+        console.log("eventRes===>",eventRes);
+
         eventList = eventRes.data[0]?.result || [];
         if (eventList.length > 0) {
           isFound = 1;
           message = 'Events fetched successfully';
-          console.log("eventList",eventList);
+          console.log("eventList===>",eventList);
           
         }
       } catch (error) {
