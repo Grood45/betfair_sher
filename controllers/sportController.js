@@ -222,6 +222,7 @@ exports.getEventsList = async (req, res) => {
       betfairSportList: { $ne: null },
       sportName: "Tennis"
     });
+    
 
     for (const sport of allSports) {
       const eventTypeId = sport.betfairSportList?.eventType?.id;
